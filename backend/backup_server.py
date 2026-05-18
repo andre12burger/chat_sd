@@ -11,6 +11,7 @@ import time
 import threading
 
 from chat_engine import ChatEngine
+from chat_engine import HEALTHCHECK_USERNAME
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +35,7 @@ class BackupServer:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe_socket:
                 probe_socket.settimeout(1.0)
                 probe_socket.connect((self.primary_host, self.primary_port))
+                probe_socket.sendall(HEALTHCHECK_USERNAME.encode("utf-8"))
             return True
         except (ConnectionRefusedError, TimeoutError, OSError):
             return False

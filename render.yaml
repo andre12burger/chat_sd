@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: chat-distribuido
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+    envVars:
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: ENGINE_HOST
+        value: 127.0.0.1
+      - key: ENGINE_PORT
+        value: "5000"
+      - key: ENGINE_CONNECT_RETRIES
+        value: "10"
+      - key: ENGINE_CONNECT_RETRY_DELAY
+        value: "1.0"

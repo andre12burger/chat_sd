@@ -22,6 +22,7 @@ import socket
 import threading
 import logging
 import os
+import time
 from flask import Flask, request, send_from_directory
 from flask_socketio import SocketIO, emit, disconnect
 
@@ -60,7 +61,7 @@ class ClientTCPConnection:
     - Métodos para enviar e receber.
     """
     
-    def __init__(self, sid: str, username: str, engine_host: str = "localhost", engine_port: int = 5000):
+    def __init__(self, sid: str, username: str, engine_host: str = None, engine_port: int = None):
         """
         Inicializa a conexão TCP.
         
@@ -72,8 +73,10 @@ class ClientTCPConnection:
         """
         self.sid = sid
         self.username = username
-        self.engine_host = engine_host
-        self.engine_port = engine_port
+        self.engine_host = engine_host or os.environ.get("ENGINE_HOST", "127.0.0.1")
+        self.engine_port = engine_port or int(os.environ.get("ENGINE_PORT", "5000"))
+        self.connect_retries = int(os.environ.get("ENGINE_CONNECT_RETRIES", "5"))
+        self.connect_retry_delay = float(os.environ.get("ENGINE_CONNECT_RETRY_DELAY", "1.0"))
         
         self.tcp_socket = None
         self.reader_thread = None
@@ -87,36 +90,49 @@ class ClientTCPConnection:
             True se conectado com sucesso, False caso contrário.
         """
         try:
-            # Cria socket TCP como CLIENTE
-            self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.tcp_socket.settimeout(5.0)
-            
-            # Conecta ao chat_engine
-            self.tcp_socket.connect((self.engine_host, self.engine_port))
-            logger.info(f"[{self.sid}] Conectado ao chat_engine ({self.engine_host}:{self.engine_port})")
-            
-            # Envia username como primeira mensagem (handshake simples)
-            self.tcp_socket.send(self.username.encode('utf-8'))
-            
-            self.connected = True
-            
-            # ===== DISPARA THREAD DE LEITURA EM BACKGROUND =====
-            # Esta thread ficará esperando mensagens do chat_engine
-            # e as repassará para o navegador via WebSocket (emit).
-            self.reader_thread = threading.Thread(
-                target=self._read_from_engine,
-                daemon=True,
-                name=f"TCPReader-{self.sid}"
-            )
-            self.reader_thread.start()
-            logger.info(f"[{self.sid}] Thread de leitura iniciada ({self.reader_thread.name})")
-            
-            return True
-        
-        except socket.timeout:
-            logger.error(f"[{self.sid}] Timeout ao conectar ao chat_engine")
-            self.disconnect()
+            last_error = None
+
+            for attempt in range(1, self.connect_retries + 1):
+                try:
+                    # Cria socket TCP como CLIENTE
+                    self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    self.tcp_socket.settimeout(5.0)
+
+                    # Conecta ao chat_engine
+                    self.tcp_socket.connect((self.engine_host, self.engine_port))
+                    logger.info(f"[{self.sid}] Conectado ao chat_engine ({self.engine_host}:{self.engine_port})")
+
+                    # Envia username como primeira mensagem (handshake simples)
+                    self.tcp_socket.send(self.username.encode('utf-8'))
+
+                    self.connected = True
+
+                    # ===== DISPARA THREAD DE LEITURA EM BACKGROUND =====
+                    # Esta thread ficará esperando mensagens do chat_engine
+                    # e as repassará para o navegador via WebSocket (emit).
+                    self.reader_thread = threading.Thread(
+                        target=self._read_from_engine,
+                        daemon=True,
+                        name=f"TCPReader-{self.sid}"
+                    )
+                    self.reader_thread.start()
+                    logger.info(f"[{self.sid}] Thread de leitura iniciada ({self.reader_thread.name})")
+
+                    return True
+
+                except Exception as error:
+                    last_error = error
+                    logger.warning(
+                        f"[{self.sid}] Tentativa {attempt}/{self.connect_retries} falhou ao conectar ao chat_engine: {error}"
+                    )
+                    self.disconnect()
+
+                    if attempt < self.connect_retries:
+                        time.sleep(self.connect_retry_delay)
+
+            logger.error(f"[{self.sid}] Nao foi possivel conectar ao chat_engine apos {self.connect_retries} tentativas: {last_error}")
             return False
+        
         except Exception as e:
             logger.error(f"[{self.sid}] Erro ao conectar ao chat_engine: {e}")
             self.disconnect()
@@ -176,8 +192,9 @@ class ClientTCPConnection:
             True se enviado com sucesso, False caso contrário.
         """
         if not self.connected or not self.tcp_socket:
-            logger.warning(f"[{self.sid}] Tentativa de enviar em socket desconectado")
-            return False
+            logger.warning(f"[{self.sid}] Socket desconectado; tentando reconectar antes de enviar")
+            if not self.connect():
+                return False
         
         try:
             self.tcp_socket.send(message.encode('utf-8'))
@@ -186,6 +203,14 @@ class ClientTCPConnection:
         except Exception as e:
             logger.error(f"[{self.sid}] Erro ao enviar para Engine: {e}")
             self.disconnect()
+            if self.connect():
+                try:
+                    self.tcp_socket.send(message.encode('utf-8'))
+                    logger.info(f"[{self.sid}] Enviado para Engine apos reconexao: {message}")
+                    return True
+                except Exception as retry_error:
+                    logger.error(f"[{self.sid}] Falha ao reenviar apos reconexao: {retry_error}")
+                    self.disconnect()
             return False
     
     def disconnect(self) -> None:

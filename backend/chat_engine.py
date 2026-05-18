@@ -27,6 +27,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+HEALTHCHECK_USERNAME = "__healthcheck__"
+
 # ============================================================================
 # CHAT ENGINE (O Motor Principal)
 # ============================================================================
@@ -178,6 +180,11 @@ class ChatEngine:
                 
                 username = data.decode('utf-8').strip()
                 logger.info(f"Cliente de {client_address} identificou-se como: {username}")
+
+                if username == HEALTHCHECK_USERNAME:
+                    logger.info(f"Healthcheck recebido de {client_address}; encerrando conexao de monitoramento.")
+                    username = None
+                    return
             
             except socket.timeout:
                 logger.warning(f"Timeout ao esperar username de {client_address}")

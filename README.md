@@ -96,6 +96,25 @@ Esperado:
 ### Browser: Abra a interface
 Navegue para: **http://localhost:5001**
 
+## Deploy Online Gratuito
+
+A forma mais simples para a apresentação é publicar o projeto no **Render** usando o arquivo [render.yaml](render.yaml).
+
+### Passo a passo resumido
+1. Faça push do projeto para um repositório público no GitHub.
+2. No Render, escolha **New > Blueprint** e selecione o repositório.
+3. O Render usará o [render.yaml](render.yaml) para instalar dependências e iniciar o serviço.
+4. Após o deploy, você receberá uma URL pública do tipo `https://...onrender.com`.
+
+### Observação importante
+O deploy gratuito pode entrar em modo de suspensão quando ficar sem uso. Para a apresentação, mantenha a URL aberta antes da demonstração e, se necessário, use um monitor gratuito como o UptimeRobot para manter o serviço acordado.
+
+### Fluxo de produção
+No ambiente online, o [start.sh](start.sh) sobe três processos:
+- `chat_engine.py` como motor TCP principal;
+- `backup_server.py` como monitor de failover;
+- `web_gateway.py` como interface web pública.
+
 ## Conceitos-Chave Implementados
 
 ### 1. **Threading.Thread Explícito**
