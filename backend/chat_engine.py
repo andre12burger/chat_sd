@@ -309,6 +309,11 @@ class ChatEngine:
             message: Mensagem a enviar (string).
             exclude: Username a excluir (para não ecoar para si mesmo).
         """
+        # Filtra broadcasts que contenham tráfego HTTP (probes)
+        if isinstance(message, str) and ('HTTP/' in message or message.startswith('HEAD ') or message.startswith('GET ')):
+            logger.info(f"Ignorando broadcast de probe HTTP: {message.splitlines()[0]!r}")
+            return
+
         formatted_message = f"{message}\n".encode('utf-8')
         
         # Adquire lock E cria uma cópia da lista
