@@ -13,8 +13,11 @@ import threading
 import logging
 import os
 import time
+import json
 
 logger = logging.getLogger(__name__)
+
+SYSTEM_INFO_PREFIX = "__SYSTEM_INFO__ "
 
 HTTP_PROBE_METHODS = (
     'GET ', 'HEAD ', 'POST ', 'PUT ', 'DELETE ',
@@ -104,6 +107,10 @@ class ClientTCPConnection:
         self.connected = False
         self.authenticated = False  # ← Novo: flag de autenticação
         self.auth_event = threading.Event()  # ← Novo: sincronização
+        self.thread_id = None
+        self.thread_name = None
+        self.server_role = None
+        self.last_system_info = {}
 
     # ========================================================================
     # MÉTODO: connect() - Abre Conexão TCP e Dispara Thread de Leitura
@@ -280,6 +287,32 @@ class ClientTCPConnection:
                                 f"[{self.sid}] Ignorando probe HTTP: "
                                 f"{message.splitlines()[0]!r}"
                             )
+                            continue
+
+                        if message.startswith(SYSTEM_INFO_PREFIX):
+                            payload_text = message[len(SYSTEM_INFO_PREFIX):].strip()
+                            try:
+                                payload = json.loads(payload_text)
+                            except json.JSONDecodeError:
+                                logger.warning(
+                                    f"[{self.sid}] Payload de system_info inválido"
+                                )
+                                continue
+
+                            self.last_system_info = payload
+                            self.thread_id = payload.get("thread_id")
+                            self.thread_name = payload.get("thread_name")
+                            self.server_role = payload.get("server_role")
+
+                            from . import app_context
+
+                            socketio = app_context.get_socketio()
+                            if socketio:
+                                socketio.emit(
+                                    "system_info",
+                                    payload,
+                                    room=self.sid,
+                                )
                             continue
 
                         # ===== EMITE PARA NAVEGADOR VIA WEBSOCKET =====

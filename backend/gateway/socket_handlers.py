@@ -11,6 +11,8 @@ import logging
 from flask import request
 from flask_socketio import emit
 
+from runtime_status import read_system_status
+
 from .tcp_proxy import ClientTCPConnection
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,18 @@ logger = logging.getLogger(__name__)
 # Esta estrutura mapeia cada sessão WebSocket (identificada por sid)
 # para sua conexão TCP correspondente com o chat_engine.
 clients_map = {}
+
+
+def _build_system_state() -> dict:
+    status = read_system_status()
+    role = status.get('server_role', 'unknown')
+    label = 'Primário' if role == 'primary' else 'Backup' if role == 'backup' else 'Indefinido'
+    status.update({
+        'server_label': label,
+        'active_web_clients': len(clients_map),
+        'active_engine_role': role,
+    })
+    return status
 
 
 # ============================================================================
@@ -90,7 +104,19 @@ def on_join_chat(socketio, data):
         register_client_connection(sid, tcp_connection)
 
         logger.info(f"[{sid}] Conectado com sucesso ao chat engine")
-        emit('connection_success', {'username': username})
+        system_state = _build_system_state()
+        emit(
+            'connection_success',
+            {
+                'username': username,
+                'server_role': system_state.get('server_role', 'unknown'),
+                'server_label': system_state.get('server_label', 'Indefinido'),
+                'active_web_clients': system_state.get('active_web_clients', 0),
+            }
+        )
+        emit('system_state', system_state)
+        if tcp_connection.last_system_info:
+            emit('system_info', tcp_connection.last_system_info)
 
     except Exception as error:
         logger.error(f"[{sid}] Erro ao processar join_chat: {error}")
@@ -149,3 +175,9 @@ def on_disconnect():
     if tcp_connection:
         tcp_connection.disconnect()
         unregister_client_connection(sid)
+
+        from . import app_context
+
+        socketio = app_context.get_socketio()
+        if socketio:
+            socketio.emit('system_state', _build_system_state())

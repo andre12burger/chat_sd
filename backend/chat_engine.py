@@ -23,7 +23,7 @@ if __name__ == "__main__":
     logger.info("=" * 60)
 
     try:
-        engine = ChatEngine(host="127.0.0.1", port=5000)
+        engine = ChatEngine(host="127.0.0.1", port=5000, server_role="primary")
         engine.start()
     except KeyboardInterrupt:
         logger.info("Interrupção do usuário.")

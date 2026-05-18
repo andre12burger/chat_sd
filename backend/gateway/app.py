@@ -11,11 +11,14 @@ Responsabilidades:
 
 import logging
 import os
+import threading
+import time
 from flask import Flask, send_from_directory
 from flask_socketio import SocketIO
 
 from . import socket_handlers
 from . import app_context
+from runtime_status import read_system_status
 
 # ============================================================================
 # CONFIGURAÇÃO DE LOGGING
@@ -53,6 +56,10 @@ socketio = SocketIO(
     cors_allowed_origins="*",
     async_mode="threading"
 )
+
+_monitor_started = False
+_last_state_signature = None
+_last_server_role = None
 
 # Define contexto global para que tcp_proxy.py acesse socketio
 app_context.set_socketio(socketio)
@@ -100,6 +107,65 @@ def health_check():
     Não é logado (silencioso) para não poluir os logs.
     """
     return 'OK', 200
+
+
+def _build_system_state_snapshot():
+    status = read_system_status()
+    role = status.get('server_role', 'unknown')
+    label = 'Primário' if role == 'primary' else 'Backup' if role == 'backup' else 'Indefinido'
+    status.update({
+        'server_role': role,
+        'server_label': label,
+        'active_web_clients': len(socket_handlers.clients_map),
+        'cpu_threads': os.cpu_count() or 1,
+    })
+    return status
+
+
+def _system_monitor_loop():
+    global _last_state_signature, _last_server_role
+
+    while True:
+        snapshot = _build_system_state_snapshot()
+        signature = (
+            snapshot.get('server_role'),
+            snapshot.get('state'),
+            snapshot.get('active_web_clients'),
+        )
+
+        if signature != _last_state_signature:
+            socketio.emit('system_state', snapshot)
+
+            if _last_server_role is not None and snapshot.get('server_role') != _last_server_role:
+                socketio.emit('server_change', {
+                    'server_role': snapshot.get('server_role', 'unknown'),
+                    'server_label': snapshot.get('server_label', 'Indefinido'),
+                    'state': snapshot.get('state', 'unknown'),
+                    'message': (
+                        'Servidor backup assumiu o controle.'
+                        if snapshot.get('server_role') == 'backup'
+                        else 'Servidor primário voltou ao ar.'
+                    ),
+                })
+
+            _last_state_signature = signature
+            _last_server_role = snapshot.get('server_role')
+
+        time.sleep(2.0)
+
+
+def start_system_monitor():
+    global _monitor_started
+    if _monitor_started:
+        return
+
+    monitor_thread = threading.Thread(
+        target=_system_monitor_loop,
+        name='SystemMonitor',
+        daemon=True,
+    )
+    monitor_thread.start()
+    _monitor_started = True
 
 
 @app.route('/<path:filename>')
@@ -177,6 +243,8 @@ def run_app():
 
     logger.info(f"Abra http://localhost:{port} no navegador")
     logger.info("=" * 60)
+
+    start_system_monitor()
 
     socketio.run(
         app,

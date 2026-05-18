@@ -24,6 +24,51 @@
                 <span class="status-note">Use <code>/status online</code>, <code>/status away</code>, <code>/status busy</code> ou <code>/nudge</code></span>
             </div>
         </div>
+
+        <div class="system-dashboard" id="systemDashboard">
+            <div class="dashboard-head">
+                <div>
+                    <span class="dashboard-eyebrow">Telemetria distribuída</span>
+                    <h2>Status do Sistema</h2>
+                </div>
+                <span class="dashboard-pill" id="serverRoleBadge">Aguardando</span>
+            </div>
+
+            <div class="dashboard-grid">
+                <article class="telemetry-card telemetry-card--server">
+                    <span class="card-label">Servidor</span>
+                    <strong class="card-value" id="dashboardServerRole">Indefinido</strong>
+                    <span class="card-note" id="dashboardServerDetail">Sem dados de runtime</span>
+                </article>
+
+                <article class="telemetry-card">
+                    <span class="card-label">Usuário</span>
+                    <strong class="card-value" id="dashboardUserName">Nenhum conectado</strong>
+                    <span class="card-note" id="dashboardUserState">Offline</span>
+                </article>
+
+                <article class="telemetry-card">
+                    <span class="card-label">Thread</span>
+                    <strong class="card-value" id="dashboardThreadId">—</strong>
+                    <span class="card-note" id="dashboardThreadName">Aguardando alocação</span>
+                </article>
+
+                <article class="telemetry-card">
+                    <span class="card-label">Conexões</span>
+                    <strong class="card-value" id="dashboardConnections">0</strong>
+                    <span class="card-note">Sessões WebSocket ativas</span>
+                </article>
+
+                <article class="telemetry-card telemetry-card--cpu">
+                    <span class="card-label">Processador</span>
+                    <strong class="card-value" id="dashboardCpu">0 threads</strong>
+                    <div class="cpu-meter"><span id="cpuMeterFill"></span></div>
+                    <span class="card-note" id="dashboardCpuHint">Pulso de processamento</span>
+                </article>
+            </div>
+        </div>
+
+        <div class="failover-banner" id="failoverBanner" hidden></div>
         
         <div class="login-section" id="loginSection">
             <input type="text" id="usernameInput" placeholder="Digite seu username..." maxlength="20">

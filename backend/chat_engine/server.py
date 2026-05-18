@@ -10,10 +10,13 @@ Implementa o coração do projeto de Sistemas Distribuídos:
 Nenhuma abstração: apenas TCP e concorrência clássica.
 """
 
+import json
 import socket
 import threading
 import logging
 from typing import Dict
+
+from runtime_status import write_system_status
 
 from .protocol import (
     HEALTHCHECK_USERNAME,
@@ -51,7 +54,12 @@ class ChatEngine:
       por lock.
     """
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 5000):
+    def __init__(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 5000,
+        server_role: str = "primary",
+    ):
         """
         Inicializa o motor do chat.
 
@@ -63,6 +71,7 @@ class ChatEngine:
         """
         self.host = host
         self.port = port
+        self.server_role = server_role
         self.server_socket = None
 
         # ===== ESTRUTURA CRÍTICA: Clientes Conectados =====
@@ -110,6 +119,13 @@ class ChatEngine:
             self.server_socket.listen(5)  # Fila de até 5 conexões pendentes
 
             self.running = True
+            write_system_status(
+                server_role=self.server_role,
+                state="running",
+                source="chat_engine",
+                engine_host=self.host,
+                engine_port=self.port,
+            )
             logger.info(
                 f"Chat Engine iniciado em {self.host}:{self.port}"
             )
@@ -269,6 +285,24 @@ class ChatEngine:
             )
             client_socket.send(b"Bem-vindo ao chat!\n")
 
+            system_info = {
+                "type": "system_info",
+                "thread_id": threading.get_native_id(),
+                "thread_name": threading.current_thread().name,
+                "server_role": self.server_role,
+                "engine_host": self.host,
+                "engine_port": self.port,
+                "active_clients": len(self.clients),
+                "username": username,
+            }
+            client_socket.send(
+                (
+                    "__SYSTEM_INFO__ "
+                    + json.dumps(system_info, ensure_ascii=False)
+                    + "\n"
+                ).encode("utf-8")
+            )
+
             # ===== ETAPA 3: Loop de Recepção e Broadcast =====
             while True:
                 try:
@@ -386,6 +420,14 @@ class ChatEngine:
                 self.server_socket.close()
             except Exception:
                 pass
+
+        write_system_status(
+            server_role=self.server_role,
+            state="stopped",
+            source="chat_engine",
+            engine_host=self.host,
+            engine_port=self.port,
+        )
 
         # Fecha todos os clientes
         with self.clients_lock:

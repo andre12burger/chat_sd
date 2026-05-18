@@ -11,6 +11,7 @@ import time
 import threading
 
 from chat_engine import ChatEngine, HEALTHCHECK_USERNAME
+from runtime_status import write_system_status
 
 # ============================================================================
 # CONFIGURAÇÃO DE LOGGING
@@ -125,13 +126,21 @@ class BackupServer:
         - O gateway detecta a falha e reconecta automaticamente.
         """
         self._failover_started = True
+        write_system_status(
+            server_role="backup",
+            state="failover",
+            source="backup_server",
+            engine_host=self.primary_host,
+            engine_port=self.primary_port,
+        )
         logger.info(
             f"Backup assumindo a porta {self.primary_port}"
         )
 
         engine = ChatEngine(
             host=self.primary_host,
-            port=self.primary_port
+            port=self.primary_port,
+            server_role="backup",
         )
         engine.start()
 

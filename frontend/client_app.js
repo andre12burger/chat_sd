@@ -8,6 +8,18 @@ let connected = false;
 let username = '';
 let userStatus = 'online';
 let statusMap = {};
+let systemState = {
+    serverRole: 'unknown',
+    serverLabel: 'Indefinido',
+    threadId: '—',
+    threadName: 'Aguardando alocação',
+    activeConnections: 0,
+    cpuThreads: navigator.hardwareConcurrency || 1,
+    serverHost: '127.0.0.1',
+    serverPort: 5000,
+};
+let cpuPulseTimer = null;
+let bannerTimer = null;
 let audioContext;
 
 function ensureAudioContext() {
@@ -43,6 +55,97 @@ function playNudgeSound() {
     setTimeout(() => playTone(620, 0.1, 'square'), 120);
 }
 
+function setTextContent(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+function pulseCpuMeter() {
+    const meter = document.getElementById('cpuMeterFill');
+    if (!meter) return;
+
+    meter.classList.remove('pulse');
+    void meter.offsetWidth;
+    meter.classList.add('pulse');
+
+    window.clearTimeout(cpuPulseTimer);
+    cpuPulseTimer = window.setTimeout(() => {
+        meter.classList.remove('pulse');
+    }, 350);
+}
+
+function setDashboardRoleBadge(role, label) {
+    const badge = document.getElementById('serverRoleBadge');
+    if (!badge) return;
+
+    badge.classList.remove('primary', 'backup', 'alert');
+
+    if (role === 'primary') {
+        badge.classList.add('primary');
+    } else if (role === 'backup') {
+        badge.classList.add('backup');
+    } else if (role === 'alert') {
+        badge.classList.add('alert');
+    }
+
+    badge.textContent = label;
+}
+
+function showFailoverBanner(message, role) {
+    const banner = document.getElementById('failoverBanner');
+    const container = document.querySelector('.container');
+    if (!banner || !container) return;
+
+    banner.hidden = false;
+    banner.textContent = message;
+    container.classList.add('system-failover');
+
+    window.clearTimeout(bannerTimer);
+    bannerTimer = window.setTimeout(() => {
+        banner.hidden = true;
+        container.classList.remove('system-failover');
+    }, role === 'backup' ? 7000 : 4500);
+}
+
+function updateSystemDashboard(data = {}) {
+    systemState = { ...systemState, ...data };
+
+    const role = systemState.server_role || systemState.serverRole || 'unknown';
+    const label =
+        systemState.server_label ||
+        systemState.serverLabel ||
+        (role === 'primary' ? 'Primário' : role === 'backup' ? 'Backup' : 'Indefinido');
+    systemState.serverRole = role;
+    systemState.serverLabel = label;
+
+    const threadId = systemState.thread_id ?? systemState.threadId ?? '—';
+    const threadName = systemState.thread_name ?? systemState.threadName ?? 'Aguardando alocação';
+    const activeConnections = systemState.active_web_clients ?? systemState.activeConnections ?? 0;
+    const cpuThreads = systemState.cpu_threads ?? systemState.cpuThreads ?? (navigator.hardwareConcurrency || 1);
+    const usernameLabel = systemState.username || username || 'Nenhum conectado';
+
+    setTextContent('dashboardServerRole', label);
+    setTextContent('dashboardServerDetail', `${systemState.engine_host || '127.0.0.1'}:${systemState.engine_port || 5000} • ${systemState.state || 'standby'}`);
+    setTextContent('dashboardUserName', usernameLabel);
+    setTextContent('dashboardUserState', connected ? `Online • ${userStatus}` : 'Offline');
+    setTextContent('dashboardThreadId', String(threadId));
+    setTextContent('dashboardThreadName', threadName);
+    setTextContent('dashboardConnections', String(activeConnections));
+    setTextContent('dashboardCpu', `${cpuThreads} threads lógicos`);
+    setTextContent('dashboardCpuHint', connected ? 'Processamento ativo' : 'Aguardando conexão');
+
+    setDashboardRoleBadge(role, label);
+
+    if (role === 'backup') {
+        const message = systemState.state === 'failover' || systemState.message
+            ? systemState.message || '⚠ Servidor principal offline. Backup assumiu o controle.'
+            : 'Backup em modo ativo.';
+        showFailoverBanner(message, role);
+    }
+}
+
 function setUserStatus(status) {
     const statusElement = document.getElementById('userStatus');
     if (!statusElement) return;
@@ -57,6 +160,7 @@ function handleStatusUpdate(sender, status) {
 
     if (sender === username) {
         setUserStatus(status);
+        updateSystemDashboard({ username: sender, user_status: status });
         displaySystemMessage(`Você agora está ${status}.`);
     } else {
         displaySystemMessage(`${sender} está agora ${status}.`);
@@ -162,6 +266,7 @@ socket.on('connect', function() {
  */
 socket.on('receive_message', function(data) {
     displayMessage(data.message);
+    pulseCpuMeter();
 });
 
 /**
@@ -171,9 +276,31 @@ socket.on('connection_success', function(data) {
     connected = true;
     username = data.username;
     setUserStatus('online');
+    updateSystemDashboard({
+        username: data.username,
+        user_status: 'online',
+        server_role: data.server_role,
+        server_label: data.server_label,
+        active_web_clients: data.active_web_clients,
+    });
     updateUI();
     ensureAudioContext();
     displaySystemMessage(`Bem-vindo ao chat, ${username}!`);
+});
+
+socket.on('system_info', function(data) {
+    updateSystemDashboard(data);
+});
+
+socket.on('system_state', function(data) {
+    updateSystemDashboard(data);
+});
+
+socket.on('server_change', function(data) {
+    updateSystemDashboard(data);
+    const message = data.message || 'Servidor alterado.';
+    showFailoverBanner(message, data.server_role);
+    displaySystemMessage(message);
 });
 
 /**
@@ -192,6 +319,7 @@ socket.on('disconnect', function() {
     connected = false;
     userStatus = 'offline';
     setUserStatus('offline');
+    updateSystemDashboard({ user_status: 'offline' });
     updateUI();
 });
 
@@ -246,6 +374,7 @@ function sendMessage() {
     socket.emit('send_message', { message: message });
     messageInput.value = '';
     messageInput.focus();
+    pulseCpuMeter();
 }
 
 /**
@@ -297,6 +426,8 @@ function displayMessage(message) {
     if (!message.startsWith(username + ':')) {
         playMessageSound();
     }
+
+    pulseCpuMeter();
 }
 
 /**
@@ -324,7 +455,7 @@ function updateUI() {
         loginSection.style.display = 'none';
         inputSection.style.display = 'flex';
         document.getElementById('toolsSection').style.display = 'flex';
-        status.textContent = `Conectado como: ${username} • ${userStatus}`;
+        status.textContent = `Conectado como: ${username} • ${userStatus} • ${systemState.serverLabel || 'Indefinido'}`;
         document.getElementById('messageInput').focus();
     } else {
         loginSection.style.display = 'flex';
@@ -537,6 +668,10 @@ async function searchGifs() {
  */
 document.addEventListener('DOMContentLoaded', function() {
     initEmojiPicker();
+    updateSystemDashboard({
+        cpu_threads: navigator.hardwareConcurrency || 1,
+        server_label: 'Indefinido',
+    });
 
     const messageInput = document.getElementById('messageInput');
     const usernameInput = document.getElementById('usernameInput');
