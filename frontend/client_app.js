@@ -267,7 +267,7 @@ function linkify(text) {
         if (fragments.length > 0) {
             const after = originalText.slice(lastIndex);
             if (after) fragments.push(document.createTextNode(after));
-            fragments.forEach(fragment => node.parentNode.insertBefore(fragment, node);
+            fragments.forEach(fragment => node.parentNode.insertBefore(fragment, node));
             node.parentNode.removeChild(node);
         }
     });
