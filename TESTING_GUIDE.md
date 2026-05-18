@@ -12,7 +12,65 @@ Este documento descreve como testar:
 ### Objetivo
 Demonstrar que quando o servidor principal cai, o backup assume automaticamente sem afetar os usuários conectados.
 
-### Setup
+---
+
+### ⭐ **Teste no RENDER (Produção) - Recomendado para Apresentação**
+
+#### Setup
+
+1. **Abra o chat em produção:**
+   - Navegador: https://chat-distribuido-m46j.onrender.com
+   - Conecte 2-3 usuários em abas diferentes
+
+2. **Prepare o Dashboard do Render:**
+   - Acesse https://dashboard.render.com
+   - Vá para seu serviço "chat-distribuido-m46j"
+   - Deixe visível em outra janela/monitor
+
+#### Execução do Teste
+
+**Passo 1:** Conectar usuários
+- Aba 1: Username "andre"
+- Aba 2: Username "dalmazo"
+- Ambos trocando mensagens normalmente
+- Abra os logs do Render em tempo real
+
+**Passo 2:** Simular falha clicando no Dashboard
+1. No Dashboard do Render, clique em **"Suspend"** (ou "Restart")
+   - Isso mata o processo principal do serviço
+   - Simula uma falha de servidor
+
+**Passo 3:** Observar comportamento
+
+**Esperado nos LOGS (Render Dashboard):**
+```
+==> Deploying...
+==> Setting WEB_CONCURRENCY=1
+
+[... serviço para por ~2-3 segundos ...]
+
+Servidor principal indisponível. Assumindo controle...
+Backup assumindo a porta 5000
+Chat Engine iniciado em 127.0.0.1:5000
+
+[... usuários reconectados ...]
+```
+
+**Esperado no NAVEGADOR:**
+```
+✅ Usuários A e B CONTINUAM CONECTADOS
+✅ Podem enviar e receber mensagens normalmente
+✅ Nenhuma mensagem foi perdida
+```
+
+**Tempo de failover:** ~2-3 segundos (imperceptível para o usuário)
+
+---
+
+### 🏠 **Teste LOCALMENTE (Desenvolvimento) - Para Debug**
+
+Se preferir testar no seu PC antes:
+
 ```bash
 # Terminal 1: Chat Engine Principal
 python backend/chat_engine.py
@@ -27,15 +85,13 @@ python backend/web_gateway.py
 # Conecte 2-3 usuários diferentes
 ```
 
-### Execução do Teste
-
 **Passo 1:** Conectar usuários
 - Usuário A: "andre"
 - Usuário B: "dalmazo"
 - Ambos trocando mensagens normalmente
 
 **Passo 2:** Simular falha do servidor principal
-```bash
+```powershell
 # No Terminal 1 (onde chat_engine.py está rodando):
 # Pressione Ctrl+C para FORÇAR A MORTE DO PROCESSO
 ```
