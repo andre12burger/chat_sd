@@ -8,7 +8,8 @@ Trata eventos do navegador:
 """
 
 import logging
-from flask_socketio import request, emit
+from flask import request
+from flask_socketio import emit
 
 from .tcp_proxy import ClientTCPConnection
 
