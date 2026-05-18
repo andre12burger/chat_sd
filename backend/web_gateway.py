@@ -36,6 +36,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Reduz verbosidade do Werkzeug (healthchecks, probes) para não sobrecarregar logs
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
 # ============================================================================
 # CONFIGURAÇÃO FLASK + SOCKETIO
 # ============================================================================
