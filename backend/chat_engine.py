@@ -199,6 +199,16 @@ class ChatEngine:
                     except Exception:
                         pass
                     return
+
+                # Rejeita usernames que sejam métodos HTTP (ex.: GET, HEAD, POST)
+                http_methods = {"GET", "POST", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE", "CONNECT", "PATCH"}
+                if username.upper() in http_methods:
+                    logger.warning(f"Username parece metodo HTTP ({username!r}) de {client_address}; encerrando conexao.")
+                    try:
+                        client_socket.send(b"Invalid username\n")
+                    except Exception:
+                        pass
+                    return
             
             except socket.timeout:
                 logger.warning(f"Timeout ao esperar username de {client_address}")
