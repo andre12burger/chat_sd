@@ -20,6 +20,7 @@ let systemState = {
 };
 let cpuPulseTimer = null;
 let bannerTimer = null;
+let nudgeSoundTimer = null;
 let audioContext;
 
 function ensureAudioContext() {
@@ -52,7 +53,8 @@ function playMessageSound() {
 
 function playNudgeSound() {
     playTone(520, 0.1, 'square');
-    setTimeout(() => playTone(620, 0.1, 'square'), 120);
+    window.clearTimeout(nudgeSoundTimer);
+    nudgeSoundTimer = window.setTimeout(() => playTone(620, 0.1, 'square'), 120);
 }
 
 function setTextContent(id, value) {
@@ -109,6 +111,26 @@ function showFailoverBanner(message, role) {
     }, role === 'backup' ? 7000 : 4500);
 }
 
+function renderConnectedUsers(users = []) {
+    const tbody = document.getElementById('onlineUsersTable');
+    if (!tbody) return;
+
+    if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="2" class="empty-state">Aguardando conexão</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = users.map(user => {
+        const threadLabel = user.thread_id ? `${user.thread_id}` : '—';
+        return `
+            <tr>
+                <td>${escapeHtml(user.username || 'desconhecido')}</td>
+                <td>${escapeHtml(threadLabel)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
 function updateSystemDashboard(data = {}) {
     systemState = { ...systemState, ...data };
 
@@ -125,6 +147,7 @@ function updateSystemDashboard(data = {}) {
     const activeConnections = systemState.active_web_clients ?? systemState.activeConnections ?? 0;
     const cpuThreads = systemState.cpu_threads ?? systemState.cpuThreads ?? (navigator.hardwareConcurrency || 1);
     const usernameLabel = systemState.username || username || 'Nenhum conectado';
+    const connectedUsers = systemState.connected_users || [];
 
     setTextContent('dashboardServerRole', label);
     setTextContent('dashboardServerDetail', `${systemState.engine_host || '127.0.0.1'}:${systemState.engine_port || 5000} • ${systemState.state || 'standby'}`);
@@ -135,6 +158,12 @@ function updateSystemDashboard(data = {}) {
     setTextContent('dashboardConnections', String(activeConnections));
     setTextContent('dashboardCpu', `${cpuThreads} threads lógicos`);
     setTextContent('dashboardCpuHint', connected ? 'Processamento ativo' : 'Aguardando conexão');
+    setTextContent('dashboardGatewayPid', String(systemState.gateway_pid || '—'));
+    setTextContent('dashboardPrimaryState', label);
+    setTextContent('dashboardBackupState', role === 'backup' ? 'Ativo' : 'Standby');
+    setTextContent('dashboardSocketInfo', `${systemState.engine_host || '127.0.0.1'}:${systemState.engine_port || 5000}`);
+
+    renderConnectedUsers(connectedUsers);
 
     setDashboardRoleBadge(role, label);
 
@@ -175,6 +204,15 @@ function triggerNudge(sender) {
     }
     playNudgeSound();
     displaySystemMessage(`${sender} enviou um nudge!`);
+}
+
+function sendNudge() {
+    const messageInput = document.getElementById('messageInput');
+    socket.emit('send_message', { message: '/nudge' });
+    if (messageInput) {
+        messageInput.value = '';
+        messageInput.focus();
+    }
 }
 
 const emoticonMap = {

@@ -118,6 +118,17 @@ def _build_system_state_snapshot():
         'server_label': label,
         'active_web_clients': len(socket_handlers.clients_map),
         'cpu_threads': os.cpu_count() or 1,
+        'gateway_pid': os.getpid(),
+        'connected_users': [
+            {
+                'sid': sid,
+                'username': getattr(connection, 'username', 'desconhecido'),
+                'thread_id': getattr(connection, 'thread_id', None),
+                'thread_name': getattr(connection, 'thread_name', None),
+                'server_role': getattr(connection, 'server_role', None),
+            }
+            for sid, connection in socket_handlers.clients_map.items()
+        ],
     })
     return status
 

@@ -8,6 +8,7 @@ Trata eventos do navegador:
 """
 
 import logging
+import os
 from flask import request
 from flask_socketio import emit
 
@@ -25,16 +26,36 @@ logger = logging.getLogger(__name__)
 # Esta estrutura mapeia cada sessão WebSocket (identificada por sid)
 # para sua conexão TCP correspondente com o chat_engine.
 clients_map = {}
+clients_meta = {}
+
+
+def _get_client_summary(sid: str) -> dict:
+    connection = clients_map.get(sid)
+    if not connection:
+        return {}
+
+    return {
+        'sid': sid,
+        'username': getattr(connection, 'username', 'desconhecido'),
+        'thread_id': getattr(connection, 'thread_id', None),
+        'thread_name': getattr(connection, 'thread_name', None),
+        'server_role': getattr(connection, 'server_role', None),
+        'engine_host': getattr(connection, 'engine_host', None),
+        'engine_port': getattr(connection, 'engine_port', None),
+    }
 
 
 def _build_system_state() -> dict:
     status = read_system_status()
     role = status.get('server_role', 'unknown')
     label = 'Primário' if role == 'primary' else 'Backup' if role == 'backup' else 'Indefinido'
+    users = [summary for summary in (_get_client_summary(sid) for sid in clients_map.keys()) if summary]
     status.update({
         'server_label': label,
         'active_web_clients': len(clients_map),
         'active_engine_role': role,
+        'gateway_pid': os.getpid(),
+        'connected_users': users,
     })
     return status
 
@@ -102,6 +123,10 @@ def on_join_chat(socketio, data):
 
         # Registra no mapa global
         register_client_connection(sid, tcp_connection)
+        clients_meta[sid] = {
+            'username': username,
+            'connected_at': tcp_connection.last_system_info.get('connected_at'),
+        }
 
         logger.info(f"[{sid}] Conectado com sucesso ao chat engine")
         system_state = _build_system_state()
@@ -175,6 +200,7 @@ def on_disconnect():
     if tcp_connection:
         tcp_connection.disconnect()
         unregister_client_connection(sid)
+        clients_meta.pop(sid, None)
 
         from . import app_context
 

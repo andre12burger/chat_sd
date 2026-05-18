@@ -16,7 +16,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>💬 Chat Multiusuário</h1>
+            <h1>💬 MSN Chat Distribuído</h1>
             <p>Sistemas Distribuídos - Prof. Bruno Dalmazo</p>
             <div class="status-panel">
                 <span class="status-label">Status:</span>
@@ -25,78 +25,125 @@
             </div>
         </div>
 
-        <div class="system-dashboard" id="systemDashboard">
-            <div class="dashboard-head">
-                <div>
-                    <span class="dashboard-eyebrow">Telemetria distribuída</span>
-                    <h2>Status do Sistema</h2>
-                </div>
-                <span class="dashboard-pill" id="serverRoleBadge">Aguardando</span>
-            </div>
-
-            <div class="dashboard-grid">
-                <article class="telemetry-card telemetry-card--server">
-                    <span class="card-label">Servidor</span>
-                    <strong class="card-value" id="dashboardServerRole">Indefinido</strong>
-                    <span class="card-note" id="dashboardServerDetail">Sem dados de runtime</span>
-                </article>
-
-                <article class="telemetry-card">
-                    <span class="card-label">Usuário</span>
-                    <strong class="card-value" id="dashboardUserName">Nenhum conectado</strong>
-                    <span class="card-note" id="dashboardUserState">Offline</span>
-                </article>
-
-                <article class="telemetry-card">
-                    <span class="card-label">Thread</span>
-                    <strong class="card-value" id="dashboardThreadId">—</strong>
-                    <span class="card-note" id="dashboardThreadName">Aguardando alocação</span>
-                </article>
-
-                <article class="telemetry-card">
-                    <span class="card-label">Conexões</span>
-                    <strong class="card-value" id="dashboardConnections">0</strong>
-                    <span class="card-note">Sessões WebSocket ativas</span>
-                </article>
-
-                <article class="telemetry-card telemetry-card--cpu">
-                    <span class="card-label">Processador</span>
-                    <strong class="card-value" id="dashboardCpu">0 threads</strong>
-                    <div class="cpu-meter"><span id="cpuMeterFill"></span></div>
-                    <span class="card-note" id="dashboardCpuHint">Pulso de processamento</span>
-                </article>
-            </div>
-        </div>
-
         <div class="failover-banner" id="failoverBanner" hidden></div>
-        
-        <div class="login-section" id="loginSection">
-            <input type="text" id="usernameInput" placeholder="Digite seu username..." maxlength="20">
-            <button id="connectBtn" onclick="connect()">Conectar</button>
-        </div>
-        
-        <div class="chat-area" id="chatArea"></div>
-        
-        <div class="tools-section" id="toolsSection" style="display: none;">
-            <button id="emojiPickerBtn" type="button" onclick="openEmojiPicker()">Emoji</button>
-            <button id="gifToggleBtn" type="button" onclick="toggleGifPicker()">GIF</button>
-            <span class="hint">Markdown: **negrito**, *itálico*, ~~riscado~~ · Emoticons: :), :D, (L), (beer) · Use /wink porquinho e /status busy</span>
-        </div>
 
-        <div class="gif-picker" id="gifPicker" style="display: none;">
-            <div class="gif-search">
-                <input type="text" id="gifSearchInput" placeholder="Buscar GIFs..." autocomplete="off">
-                <button type="button" onclick="searchGifs()">Buscar</button>
-            </div>
-            <div class="gif-results" id="gifResults"></div>
+        <div class="workspace">
+            <section class="chat-shell">
+                <div class="system-dashboard" id="systemDashboard">
+                    <div class="dashboard-head">
+                        <div>
+                            <span class="dashboard-eyebrow">Telemetria distribuída</span>
+                            <h2>Status do Sistema</h2>
+                        </div>
+                        <span class="dashboard-pill" id="serverRoleBadge">Aguardando</span>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <article class="telemetry-card telemetry-card--server">
+                            <span class="card-label">Servidor</span>
+                            <strong class="card-value" id="dashboardServerRole">Indefinido</strong>
+                            <span class="card-note" id="dashboardServerDetail">Sem dados de runtime</span>
+                        </article>
+
+                        <article class="telemetry-card">
+                            <span class="card-label">Usuário</span>
+                            <strong class="card-value" id="dashboardUserName">Nenhum conectado</strong>
+                            <span class="card-note" id="dashboardUserState">Offline</span>
+                        </article>
+
+                        <article class="telemetry-card">
+                            <span class="card-label">Thread</span>
+                            <strong class="card-value" id="dashboardThreadId">—</strong>
+                            <span class="card-note" id="dashboardThreadName">Aguardando alocação</span>
+                        </article>
+
+                        <article class="telemetry-card">
+                            <span class="card-label">Conexões</span>
+                            <strong class="card-value" id="dashboardConnections">0</strong>
+                            <span class="card-note">Sessões ativas</span>
+                        </article>
+
+                        <article class="telemetry-card telemetry-card--cpu">
+                            <span class="card-label">Processador</span>
+                            <strong class="card-value" id="dashboardCpu">0 threads</strong>
+                            <div class="cpu-meter"><span id="cpuMeterFill"></span></div>
+                            <span class="card-note" id="dashboardCpuHint">Pulso de processamento</span>
+                        </article>
+                    </div>
+                </div>
+
+                <div class="login-modal" id="loginSection">
+                    <div class="login-modal__title">Conectar ao MSN Chat</div>
+                    <div class="login-section__row">
+                        <input type="text" id="usernameInput" placeholder="Digite seu username..." maxlength="20">
+                        <button id="connectBtn" onclick="connect()">Conectar</button>
+                    </div>
+                </div>
+
+                <div class="chat-area" id="chatArea"></div>
+
+                <div class="tools-section" id="toolsSection" style="display: none;">
+                    <button id="emojiPickerBtn" type="button" onclick="openEmojiPicker()">Emoji</button>
+                    <button id="gifToggleBtn" type="button" onclick="toggleGifPicker()">GIF</button>
+                    <button id="nudgeBtn" type="button" class="accent" onclick="sendNudge()">Chamar Atenção</button>
+                    <span class="hint">Markdown: **negrito**, *itálico*, ~~riscado~~ · Emoticons: :), :D, (L), (beer)</span>
+                </div>
+
+                <div class="gif-picker" id="gifPicker" style="display: none;">
+                    <div class="gif-search">
+                        <input type="text" id="gifSearchInput" placeholder="Buscar GIFs..." autocomplete="off">
+                        <button type="button" onclick="searchGifs()">Buscar</button>
+                    </div>
+                    <div class="gif-results" id="gifResults"></div>
+                </div>
+
+                <div class="input-section" id="inputSection" style="display: none;">
+                    <input type="text" id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off">
+                    <button id="sendBtn" onclick="sendMessage()">Enviar</button>
+                </div>
+
+                <div class="status" id="status">Desconectado</div>
+            </section>
+
+            <aside class="telemetry-sidebar">
+                <div class="sidebar-panel">
+                    <div class="sidebar-title">Engenharia do Sistema</div>
+                    <div class="sidebar-row">
+                        <span>Gateway PID</span>
+                        <strong id="dashboardGatewayPid">—</strong>
+                    </div>
+                    <div class="sidebar-row">
+                        <span>Primário</span>
+                        <strong id="dashboardPrimaryState">Indefinido</strong>
+                    </div>
+                    <div class="sidebar-row">
+                        <span>Backup</span>
+                        <strong id="dashboardBackupState">Standby</strong>
+                    </div>
+                    <div class="sidebar-row">
+                        <span>Socket</span>
+                        <strong id="dashboardSocketInfo">127.0.0.1:5001</strong>
+                    </div>
+                </div>
+
+                <div class="sidebar-panel sidebar-panel--table">
+                    <div class="sidebar-title">Usuários Online</div>
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Usuário</th>
+                                <th>Thread</th>
+                            </tr>
+                        </thead>
+                        <tbody id="onlineUsersTable">
+                            <tr>
+                                <td colspan="2" class="empty-state">Aguardando conexão</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </aside>
         </div>
-        
-        <div class="input-section" id="inputSection" style="display: none;">
-            <input type="text" id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off">
-            <button id="sendBtn" onclick="sendMessage()">Enviar</button>
-        </div>
-        
-        <div class="status" id="status">Desconectado</div>
     </div>
     
     <script src="client_app.js"></script>
