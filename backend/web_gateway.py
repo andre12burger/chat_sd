@@ -274,6 +274,19 @@ def index():
     return send_from_directory(app.static_folder, 'index.html')
 
 
+@app.route('/health')
+def health_check():
+    """
+    Health check endpoint para Render (e qualquer load balancer).
+    
+    Render faz requisições periódicas a este endpoint para confirmar
+    que o serviço está vivo. Retorna 200 OK imediatamente.
+    
+    Não é logado (silencioso) para não poluir os logs.
+    """
+    return 'OK', 200
+
+
 @app.route('/<path:filename>')
 def serve_static(filename):
     """Serve arquivos estáticos (CSS, JS, etc)."""
