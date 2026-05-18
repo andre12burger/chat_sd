@@ -273,6 +273,28 @@ class ClientTCPConnection:
                                 logger.info(
                                     f"[{self.sid}] Autenticação confirmada pelo Engine"
                                 )
+                                
+                                # ===== EMITE SYSTEM_STATE APÓS RECONECTAR =====
+                                # Depois de autenticar com sucesso,
+                                # notifica o frontend sobre o estado atual do sistema
+                                try:
+                                    from . import app_context, socket_handlers
+                                    socketio = app_context.get_socketio()
+                                    if socketio:
+                                        system_state = socket_handlers._build_system_state()
+                                        socketio.emit(
+                                            'system_state',
+                                            system_state,
+                                            room=self.sid
+                                        )
+                                        logger.info(
+                                            f"[{self.sid}] Emitido system_state após reconectar"
+                                        )
+                                except Exception as emit_error:
+                                    logger.warning(
+                                        f"[{self.sid}] Erro ao emitir system_state: {emit_error}"
+                                    )
+                                
                                 continue  # Não emite para o navegador
                             else:
                                 logger.error(
