@@ -37,13 +37,13 @@ Demonstrar que quando o servidor principal cai, o backup assume automaticamente 
 
 **Passo 2:** Simular falha usando o endpoint Demo
 
-Abra **um novo terminal PowerShell** e execute:
+Abra **um novo terminal** e execute:
 
-```powershell
-# No Render (em produção)
+```bash
+# Windows (PowerShell):
 Invoke-WebRequest -Uri "https://chat-distribuido-m46j.onrender.com/demo/kill-engine" -Method POST
 
-# Ou se preferir, via curl
+# Linux/Mac (bash/zsh):
 curl -X POST https://chat-distribuido-m46j.onrender.com/demo/kill-engine
 ```
 
@@ -105,11 +105,11 @@ python backend/web_gateway.py
 
 **Passo 2:** Simular falha usando o endpoint Demo (Terminal 4)
 
-```powershell
-# Terminal 4 (PowerShell)
+```bash
+# Windows (PowerShell):
 Invoke-WebRequest -Uri "http://localhost:5001/demo/kill-engine" -Method POST
 
-# Ou via curl (se tiver instalado)
+# Linux/Mac (bash/zsh):
 curl -X POST http://localhost:5001/demo/kill-engine
 ```
 

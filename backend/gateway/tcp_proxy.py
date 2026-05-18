@@ -29,7 +29,7 @@ class ClientTCPConnection:
     - A conexão TCP em si (socket).
     - A thread background que lê mensagens do Engine.
     - Métodos para enviar e receber.
-    - Reconexão automática.
+    - Reconexão automática com handshake de autenticação.
     """
 
     def __init__(
@@ -66,6 +66,8 @@ class ClientTCPConnection:
         self.tcp_socket = None
         self.reader_thread = None
         self.connected = False
+        self.authenticated = False  # ← Novo: flag de autenticação
+        self.auth_event = threading.Event()  # ← Novo: sincronização
 
     # ========================================================================
     # MÉTODO: connect() - Abre Conexão TCP e Dispara Thread de Leitura
@@ -75,11 +77,20 @@ class ClientTCPConnection:
         """
         Abre a conexão TCP com o chat_engine e dispara thread de leitura.
 
+        Handshake:
+        1. Conecta ao engine.
+        2. Envia username.
+        3. Aguarda confirmação "Bem-vindo ao chat!" (gerenciado por _read_from_engine).
+
         Retorna:
             True se conectado com sucesso, False caso contrário.
         """
         try:
             last_error = None
+            
+            # Reseta flags de autenticação para nova tentativa
+            self.authenticated = False
+            self.auth_event.clear()
 
             for attempt in range(1, self.connect_retries + 1):
                 try:
@@ -108,8 +119,8 @@ class ClientTCPConnection:
 
                     # ===== DISPARA THREAD DE LEITURA EM BACKGROUND =====
                     # Esta thread ficará esperando mensagens do
-                    # chat_engine e as repassará para o navegador
-                    # via WebSocket (emit).
+                    # chat_engine. Primeiro message deve ser
+                    # "Bem-vindo ao chat!" para confirmar autenticação.
                     self.reader_thread = threading.Thread(
                         target=self._read_from_engine,
                         daemon=True,
@@ -157,15 +168,12 @@ class ClientTCPConnection:
         """
         Thread background: lê mensagens do chat_engine.
 
-        Esta função executa em uma thread separada:
-        - Bloqueia em tcp_socket.recv() esperando dados do Engine.
-        - Quando recebe dados, emite via WebSocket para o navegador.
-        - Continua até a desconexão.
-
-        Tratamento de erros:
-        - Se o Engine desconecta, encerra a thread.
-        - Erros de rede são capturados e logados.
+        Detecta:
+        - "Bem-vindo ao chat!" → Sinal de autenticação bem-sucedida
+        - Mensagens normais → Repassar ao navegador
+        - Erros → Desconectar
         """
+        first_message = True
         try:
             while self.connected:
                 try:
@@ -187,6 +195,24 @@ class ClientTCPConnection:
                         logger.info(
                             f"[{self.sid}] Recebido do Engine: {message}"
                         )
+                        
+                        # ===== DETECTA CONFIRMAÇÃO DE AUTENTICAÇÃO =====
+                        # Primeira mensagem do engine deve ser "Bem-vindo ao chat!"
+                        if first_message:
+                            first_message = False
+                            if "Bem-vindo ao chat" in message:
+                                self.authenticated = True
+                                self.auth_event.set()
+                                logger.info(
+                                    f"[{self.sid}] Autenticação confirmada pelo Engine"
+                                )
+                                continue  # Não emite para o navegador
+                            else:
+                                logger.error(
+                                    f"[{self.sid}] Erro na autenticação: {message}"
+                                )
+                                break
+                        
                         # Ignora mensagens de probe HTTP
                         if (
                             'HTTP/' in message
@@ -230,6 +256,8 @@ class ClientTCPConnection:
         """
         Envia uma mensagem para o chat_engine via TCP.
 
+        Aguarda autenticação antes de enviar (sincronização).
+
         Args:
             message: Mensagem a enviar.
 
@@ -244,6 +272,19 @@ class ClientTCPConnection:
             if not self.connect():
                 return False
 
+        # ===== AGUARDA AUTENTICAÇÃO =====
+        # Espera até 5 segundos pela confirmação do engine
+        if not self.authenticated:
+            logger.info(
+                f"[{self.sid}] Aguardando autenticação antes de enviar..."
+            )
+            if not self.auth_event.wait(timeout=5.0):
+                logger.error(
+                    f"[{self.sid}] Timeout aguardando autenticação"
+                )
+                self.disconnect()
+                return False
+
         try:
             self.tcp_socket.send((message + '\n').encode('utf-8'))
             logger.info(
@@ -256,6 +297,15 @@ class ClientTCPConnection:
             )
             self.disconnect()
             if self.connect():
+                # ===== AGUARDA AUTENTICAÇÃO NOVAMENTE =====
+                if not self.authenticated:
+                    if not self.auth_event.wait(timeout=5.0):
+                        logger.error(
+                            f"[{self.sid}] Timeout na reconexão"
+                        )
+                        self.disconnect()
+                        return False
+                
                 try:
                     self.tcp_socket.send(
                         (message + '\n').encode('utf-8')
@@ -280,6 +330,8 @@ class ClientTCPConnection:
     def disconnect(self) -> None:
         """Fecha a conexão TCP e libera recursos."""
         self.connected = False
+        self.authenticated = False
+        self.auth_event.clear()
 
         if self.tcp_socket:
             try:
