@@ -105,8 +105,8 @@ class ClientTCPConnection:
                     self.tcp_socket.connect((self.engine_host, self.engine_port))
                     logger.info(f"[{self.sid}] Conectado ao chat_engine ({self.engine_host}:{self.engine_port})")
 
-                    # Envia username como primeira mensagem (handshake simples)
-                    self.tcp_socket.send(self.username.encode('utf-8'))
+                    # Envia username como primeira mensagem com NEWLINE para separar do próximo
+                    self.tcp_socket.send((self.username + '\n').encode('utf-8'))
 
                     self.connected = True
 
@@ -204,7 +204,7 @@ class ClientTCPConnection:
                 return False
         
         try:
-            self.tcp_socket.send(message.encode('utf-8'))
+            self.tcp_socket.send((message + '\n').encode('utf-8'))
             logger.info(f"[{self.sid}] Enviado para Engine: {message}")
             return True
         except Exception as e:
@@ -212,7 +212,7 @@ class ClientTCPConnection:
             self.disconnect()
             if self.connect():
                 try:
-                    self.tcp_socket.send(message.encode('utf-8'))
+                    self.tcp_socket.send((message + '\n').encode('utf-8'))
                     logger.info(f"[{self.sid}] Enviado para Engine apos reconexao: {message}")
                     return True
                 except Exception as retry_error:
