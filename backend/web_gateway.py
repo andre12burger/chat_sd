@@ -166,7 +166,11 @@ class ClientTCPConnection:
                     
                     if message:
                         logger.info(f"[{self.sid}] Recebido do Engine: {message}")
-                        
+                        # Ignora mensagens que parecem ser probes HTTP (ex.: HEAD/GET requests)
+                        if 'HTTP/' in message or message.startswith('HEAD ') or message.startswith('GET '):
+                            logger.info(f"[{self.sid}] Ignorando mensagem de probe HTTP vinda do Engine: {message.splitlines()[0]!r}")
+                            continue
+
                         # ===== EMITE PARA O NAVEGADOR VIA WEBSOCKET =====
                         # socketio.emit envia a mensagem para o cliente específico
                         socketio.emit('receive_message', {'message': message}, room=self.sid)
