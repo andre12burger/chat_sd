@@ -16,6 +16,23 @@ import time
 
 logger = logging.getLogger(__name__)
 
+HTTP_PROBE_METHODS = (
+    'GET ', 'HEAD ', 'POST ', 'PUT ', 'DELETE ',
+    'OPTIONS ', 'TRACE ', 'CONNECT ', 'PATCH '
+)
+
+
+def is_http_probe_message(message: str) -> bool:
+    """Detecta se a mensagem recebida parece um probe HTTP."""
+    if not isinstance(message, str):
+        return False
+
+    if 'HTTP/' in message:
+        return True
+
+    normalized = message.upper()
+    return any(normalized.startswith(method) for method in HTTP_PROBE_METHODS)
+
 
 # ============================================================================
 # CLASSE CLIENT TCP CONNECTION
@@ -201,7 +218,7 @@ class ClientTCPConnection:
                         if not message:
                             continue
                         
-                        logger.info(
+                        logger.debug(
                             f"[{self.sid}] Recebido do Engine: {message}"
                         )
                         
@@ -223,11 +240,7 @@ class ClientTCPConnection:
                                 break
                         
                         # Ignora mensagens de probe HTTP
-                        if (
-                            'HTTP/' in message
-                            or message.startswith('HEAD ')
-                            or message.startswith('GET ')
-                        ):
+                        if is_http_probe_message(message):
                             logger.debug(
                                 f"[{self.sid}] Ignorando probe HTTP: "
                                 f"{message.splitlines()[0]!r}"
@@ -284,7 +297,7 @@ class ClientTCPConnection:
         # ===== AGUARDA AUTENTICAÇÃO =====
         # Espera até 5 segundos pela confirmação do engine
         if not self.authenticated:
-            logger.info(
+            logger.debug(
                 f"[{self.sid}] Aguardando autenticação antes de enviar..."
             )
             if not self.auth_event.wait(timeout=5.0):
@@ -296,7 +309,7 @@ class ClientTCPConnection:
 
         try:
             self.tcp_socket.send((message + '\n').encode('utf-8'))
-            logger.info(
+            logger.debug(
                 f"[{self.sid}] Enviado para Engine: {message}"
             )
             return True
@@ -319,7 +332,7 @@ class ClientTCPConnection:
                     self.tcp_socket.send(
                         (message + '\n').encode('utf-8')
                     )
-                    logger.info(
+                    logger.debug(
                         f"[{self.sid}] Enviado para Engine "
                         f"após reconexão: {message}"
                     )
