@@ -33,37 +33,50 @@ Demonstrar que quando o servidor principal cai, o backup assume automaticamente 
 - Aba 1: Username "andre"
 - Aba 2: Username "dalmazo"
 - Ambos trocando mensagens normalmente
-- Abra os logs do Render em tempo real
+- Verifique os logs do Render em tempo real
 
-**Passo 2:** Simular falha clicando no Dashboard
-1. No Dashboard do Render, clique em **"Suspend"** (ou "Restart")
-   - Isso mata o processo principal do serviço
-   - Simula uma falha de servidor
+**Passo 2:** Simular falha usando o endpoint Demo
+
+Abra **um novo terminal PowerShell** e execute:
+
+```powershell
+# No Render (em produção)
+Invoke-WebRequest -Uri "https://chat-distribuido-m46j.onrender.com/demo/kill-engine" -Method POST
+
+# Ou se preferir, via curl
+curl -X POST https://chat-distribuido-m46j.onrender.com/demo/kill-engine
+```
+
+**O que esse comando faz:**
+- Mata APENAS as conexões TCP com o engine
+- Deixa o backup server rodando
+- Backup detecta a falha (heartbeat)
+- Backup assume a porta 5000
+- Usuários reconectam automaticamente
 
 **Passo 3:** Observar comportamento
 
 **Esperado nos LOGS (Render Dashboard):**
 ```
-==> Deploying...
-==> Setting WEB_CONCURRENCY=1
-
-[... serviço para por ~2-3 segundos ...]
+[DEMO] SIMULATING ENGINE FAILURE - Killing all TCP connections
+[DEMO] Closing TCP connection for sid1
+[DEMO] Closing TCP connection for sid2
+[DEMO] Killed 2 connections. Backup should take over in ~2 seconds.
 
 Servidor principal indisponível. Assumindo controle...
 Backup assumindo a porta 5000
 Chat Engine iniciado em 127.0.0.1:5000
-
-[... usuários reconectados ...]
 ```
 
 **Esperado no NAVEGADOR:**
 ```
-✅ Usuários A e B CONTINUAM CONECTADOS
-✅ Podem enviar e receber mensagens normalmente
+⏸️ Conexão pode interromper por 2-3 segundos
+✅ Usuários A e B RECONECTAM automaticamente
+✅ Conseguem enviar e receber mensagens normalmente
 ✅ Nenhuma mensagem foi perdida
 ```
 
-**Tempo de failover:** ~2-3 segundos (imperceptível para o usuário)
+**Tempo de failover:** ~2-3 segundos (rápido e imperceptível)
 
 ---
 
@@ -90,10 +103,14 @@ python backend/web_gateway.py
 - Usuário B: "dalmazo"
 - Ambos trocando mensagens normalmente
 
-**Passo 2:** Simular falha do servidor principal
+**Passo 2:** Simular falha usando o endpoint Demo (Terminal 4)
+
 ```powershell
-# No Terminal 1 (onde chat_engine.py está rodando):
-# Pressione Ctrl+C para FORÇAR A MORTE DO PROCESSO
+# Terminal 4 (PowerShell)
+Invoke-WebRequest -Uri "http://localhost:5001/demo/kill-engine" -Method POST
+
+# Ou via curl (se tiver instalado)
+curl -X POST http://localhost:5001/demo/kill-engine
 ```
 
 **Passo 3:** Observar comportamento
@@ -106,8 +123,9 @@ Backup assumindo a porta 5000
 Chat Engine iniciado em 127.0.0.1:5000
 
 [Navegador]
-✅ Usuários A e B CONTINUAM CONECTADOS
+✅ Usuários A e B RECONECTAM automaticamente
 ✅ Conseguem enviar e receber mensagens normalmente
+✅ Nenhuma mensagem foi perdida
 ```
 
 **Por que funciona:**
