@@ -191,7 +191,7 @@ curl -X POST https://chat-distribuido-m46j.onrender.com/demo/reset-failover-hist
 - Executar `/demo/kill-engine` → observar backup assumir em ~2-3s e frontends reconectarem
 - Verificar `system_state` e `server_change` sendo emitidos
 
-Para um guia passo-a-passo com logs e exemplos, consulte `docs/TESTING_GUIDE.md`.
+Para um guia **completo e exhaustivo** de testes (tudo que o usuário vê, como foi implementado, testes locais e em produção, comandos de demonstração), consulte `docs/TESTING_COMPLETE.md`.
 
 ----
 
