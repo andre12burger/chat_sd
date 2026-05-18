@@ -282,11 +282,21 @@ class ClientTCPConnection:
                                     socketio = app_context.get_socketio()
                                     if socketio:
                                         system_state = socket_handlers._build_system_state()
+                                        # Emite para o cliente específico (mantido)
                                         socketio.emit(
                                             'system_state',
                                             system_state,
                                             room=self.sid
                                         )
+                                        # Também emite globalmente para atualizar todos os dashboards
+                                        try:
+                                            socketio.emit('system_state', system_state)
+                                            logger.info(
+                                                f"[{self.sid}] Emitido system_state GLOBAL após reconectar"
+                                            )
+                                        except Exception:
+                                            # Se falhar, já temos a emissão por sala
+                                            pass
                                         logger.info(
                                             f"[{self.sid}] Emitido system_state após reconectar"
                                         )
