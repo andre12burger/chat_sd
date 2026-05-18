@@ -16,8 +16,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>💬 MSN Chat Distribuído</h1>
-            <p>Sistemas Distribuídos - Prof. Bruno Dalmazo</p>
+            <h1>Chat Distribuído</h1>
             <div class="status-panel">
                 <span class="status-label">Status:</span>
                 <span id="userStatus" class="status-dot online">Online</span>
@@ -119,6 +118,14 @@
                     <div class="sidebar-row">
                         <span>Backup</span>
                         <strong id="dashboardBackupState">Standby</strong>
+                    </div>
+                    <div class="sidebar-row">
+                        <span>Último failover</span>
+                        <strong id="dashboardLastFailover">Nenhum</strong>
+                    </div>
+                    <div class="sidebar-row">
+                        <span>Motivo</span>
+                        <strong id="dashboardFailoverReason">-</strong>
                     </div>
                     <div class="sidebar-row">
                         <span>Socket</span>

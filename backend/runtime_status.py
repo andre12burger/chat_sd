@@ -22,6 +22,8 @@ def _default_status() -> Dict[str, Any]:
         "source": "unknown",
         "engine_host": "127.0.0.1",
         "engine_port": 5000,
+        "last_failover_reason": None,
+        "last_failover_at": None,
         "updated_at": _utc_now(),
     }
 

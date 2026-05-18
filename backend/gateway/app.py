@@ -119,6 +119,7 @@ def _build_system_state_snapshot():
         'active_web_clients': len(socket_handlers.clients_map),
         'cpu_threads': os.cpu_count() or 1,
         'gateway_pid': os.getpid(),
+        'server_health': 'online' if role in ('primary', 'backup') else 'unknown',
         'connected_users': [
             {
                 'sid': sid,

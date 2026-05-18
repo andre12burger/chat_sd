@@ -148,6 +148,8 @@ function updateSystemDashboard(data = {}) {
     const cpuThreads = systemState.cpu_threads ?? systemState.cpuThreads ?? (navigator.hardwareConcurrency || 1);
     const usernameLabel = systemState.username || username || 'Nenhum conectado';
     const connectedUsers = systemState.connected_users || [];
+    const failoverReason = systemState.last_failover_reason || systemState.failover_reason || 'Nenhum';
+    const failoverAt = systemState.last_failover_at || systemState.failover_at || 'Nunca';
 
     setTextContent('dashboardServerRole', label);
     setTextContent('dashboardServerDetail', `${systemState.engine_host || '127.0.0.1'}:${systemState.engine_port || 5000} • ${systemState.state || 'standby'}`);
@@ -161,18 +163,13 @@ function updateSystemDashboard(data = {}) {
     setTextContent('dashboardGatewayPid', String(systemState.gateway_pid || '—'));
     setTextContent('dashboardPrimaryState', label);
     setTextContent('dashboardBackupState', role === 'backup' ? 'Ativo' : 'Standby');
+    setTextContent('dashboardLastFailover', failoverAt === 'Nunca' ? 'Nenhum' : failoverAt);
+    setTextContent('dashboardFailoverReason', failoverReason);
     setTextContent('dashboardSocketInfo', `${systemState.engine_host || '127.0.0.1'}:${systemState.engine_port || 5000}`);
 
     renderConnectedUsers(connectedUsers);
 
     setDashboardRoleBadge(role, label);
-
-    if (role === 'backup') {
-        const message = systemState.state === 'failover' || systemState.message
-            ? systemState.message || '⚠ Servidor principal offline. Backup assumiu o controle.'
-            : 'Backup em modo ativo.';
-        showFailoverBanner(message, role);
-    }
 }
 
 function setUserStatus(status) {

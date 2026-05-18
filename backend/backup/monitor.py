@@ -9,6 +9,7 @@ import logging
 import socket
 import time
 import threading
+from datetime import datetime, timezone
 
 from chat_engine import ChatEngine, HEALTHCHECK_USERNAME
 from runtime_status import write_system_status
@@ -132,6 +133,8 @@ class BackupServer:
             source="backup_server",
             engine_host=self.primary_host,
             engine_port=self.primary_port,
+            last_failover_reason="Heartbeat do primário falhou",
+            last_failover_at=datetime.now(timezone.utc).isoformat(),
         )
         logger.info(
             f"Backup assumindo a porta {self.primary_port}"
