@@ -226,6 +226,55 @@ body {
     background: white;
 }
 
+.msn-emoticon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin: 0 2px;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.wink-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(7, 31, 77, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 20;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.6s ease;
+}
+
+.wink-overlay.wink-hide {
+    opacity: 0;
+}
+
+.wink-box {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 18px;
+    padding: 28px 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(120, 152, 205, 0.35);
+}
+
+.wink-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.wink-text {
+    font-size: 18px;
+    color: #294870;
+    font-weight: 700;
+}
+
 .tools-section button {
     padding: 8px 14px;
     background: #5a67d8;

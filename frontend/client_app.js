@@ -73,6 +73,79 @@ function triggerNudge(sender) {
     displaySystemMessage(`${sender} enviou um nudge!`);
 }
 
+const emoticonMap = {
+    ':)': '😀',
+    ':(': '☹️',
+    ':D': '😄',
+    ';)': '😉',
+    ':/': '😕',
+    '(L)': '❤️',
+    '(beer)': '🍺',
+    '(party)': '🎉',
+    '(heart)': '💖'
+};
+
+const winkMap = {
+    porquinho: '🐷',
+    beijo: '💋',
+    foguete: '🚀',
+    musica: '🎶',
+    festa: '🎉'
+};
+
+function triggerWinkAnimation(name) {
+    const container = document.querySelector('.container');
+    if (!container) return;
+
+    const icon = winkMap[name.toLowerCase()] || '✨';
+    const overlay = document.createElement('div');
+    overlay.className = 'wink-overlay';
+    overlay.innerHTML = `
+        <div class="wink-box">
+            <div class="wink-icon">${icon}</div>
+            <div class="wink-text">${name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Wink'}!</div>
+        </div>
+    `;
+
+    container.appendChild(overlay);
+    playTone(520, 0.12, 'triangle');
+    setTimeout(() => {
+        overlay.classList.add('wink-hide');
+    }, 2000);
+    setTimeout(() => overlay.remove(), 2600);
+}
+
+function parseEmoticons(text) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
+    const textNodes = [];
+
+    while (walker.nextNode()) {
+        textNodes.push(walker.currentNode);
+    }
+
+    textNodes.forEach(node => {
+        const originalText = node.textContent;
+        if (!originalText) return;
+
+        let currentText = originalText;
+        for (const shortcut of Object.keys(emoticonMap)) {
+            const escaped = shortcut.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const regex = new RegExp(escaped, 'g');
+            currentText = currentText.replace(regex, ` <span class="msn-emoticon">${emoticonMap[shortcut]}</span> `);
+        }
+
+        if (currentText !== originalText) {
+            const wrapper = document.createElement('span');
+            wrapper.innerHTML = currentText;
+            node.parentNode.replaceChild(wrapper, node);
+        }
+    });
+
+    return doc.body.innerHTML;
+}
+
 // ============================================================================
 // EVENTOS SOCKETIO
 // ============================================================================
@@ -196,6 +269,15 @@ function displayMessage(message) {
         return;
     }
 
+    const winkMatch = message.match(/^[^:]+:\s*\/wink\s*([^\s]*)/i);
+    if (winkMatch) {
+        const sender = message.split(':')[0];
+        const winkName = winkMatch[1] || 'wink';
+        triggerWinkAnimation(winkName);
+        displaySystemMessage(`${sender} enviou um wink ${winkName}!`);
+        return;
+    }
+
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
     
@@ -288,7 +370,8 @@ function renderMessageText(rawMessage) {
     const escaped = escapeHtml(rawMessage);
     const emojiText = replaceEmojiShortcodes(escaped);
     const markdownText = replaceMarkdown(emojiText);
-    const mediaText = embedMedia(markdownText);
+    const emoticonText = parseEmoticons(markdownText);
+    const mediaText = embedMedia(emoticonText);
     const linkedText = linkify(mediaText);
     return linkedText;
 }
