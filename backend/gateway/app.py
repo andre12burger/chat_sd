@@ -234,6 +234,40 @@ def demo_kill_engine():
     }, 200
 
 
+@app.route('/demo/reset-failover-history', methods=['POST'])
+def demo_reset_failover_history():
+    """
+    [DEMO ONLY] Reseta o histórico de failover.
+    
+    Limpa os campos last_failover_reason e last_failover_at
+    para começar uma nova demonstração do zero.
+    """
+    logger.warning("=" * 60)
+    logger.warning("[DEMO] RESETTING FAILOVER HISTORY")
+    logger.warning("=" * 60)
+    
+    from runtime_status import write_system_status, read_system_status
+    
+    current_status = read_system_status()
+    write_system_status(
+        server_role=current_status.get('server_role', 'primary'),
+        state=current_status.get('state', 'running'),
+        source=current_status.get('source', 'demo'),
+        engine_host=current_status.get('engine_host', '127.0.0.1'),
+        engine_port=current_status.get('engine_port', 5000),
+        last_failover_reason=None,
+        last_failover_at=None,
+    )
+    
+    logger.warning("[DEMO] Failover history reset!")
+    logger.warning("=" * 60)
+    
+    return {
+        "status": "ok",
+        "message": "Failover history reset. Last failover = None, Reason = None",
+    }, 200
+
+
 # ============================================================================
 # PONTO DE ENTRADA
 # ============================================================================

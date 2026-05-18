@@ -119,12 +119,21 @@ class ChatEngine:
             self.server_socket.listen(5)  # Fila de até 5 conexões pendentes
 
             self.running = True
+            
+            # ===== ATUALIZA STATUS DO SISTEMA =====
+            # Lê o status anterior para preservar dados de failover
+            from runtime_status import read_system_status
+            previous_status = read_system_status()
+            
             write_system_status(
                 server_role=self.server_role,
                 state="running",
                 source="chat_engine",
                 engine_host=self.host,
                 engine_port=self.port,
+                # ✅ Preserva dados de failover anterior
+                last_failover_reason=previous_status.get('last_failover_reason'),
+                last_failover_at=previous_status.get('last_failover_at'),
             )
             logger.info(
                 f"Chat Engine iniciado em {self.host}:{self.port}"
@@ -421,12 +430,19 @@ class ChatEngine:
             except Exception:
                 pass
 
+        # Lê o status anterior para preservar dados de failover
+        from runtime_status import read_system_status
+        previous_status = read_system_status()
+        
         write_system_status(
             server_role=self.server_role,
             state="stopped",
             source="chat_engine",
             engine_host=self.host,
             engine_port=self.port,
+            # ✅ Preserva dados de failover anterior
+            last_failover_reason=previous_status.get('last_failover_reason'),
+            last_failover_at=previous_status.get('last_failover_at'),
         )
 
         # Fecha todos os clientes
