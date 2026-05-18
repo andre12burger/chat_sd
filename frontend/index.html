@@ -6,6 +6,11 @@
     <title>Chat Multiusuário - Sistemas Distribuídos</title>
     <link rel="icon" href="data:,">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="module">
+        import { EmojiButton } from 'https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4/dist/index.js';
+        window.EmojiButton = EmojiButton;
+    </script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,6 +28,7 @@
         <div class="chat-area" id="chatArea"></div>
         
         <div class="tools-section" id="toolsSection" style="display: none;">
+            <button id="emojiPickerBtn" type="button" onclick="openEmojiPicker()">Emoji</button>
             <button id="gifToggleBtn" type="button" onclick="toggleGifPicker()">GIF</button>
             <span class="hint">Markdown: **negrito**, *itálico*, ~~riscado~~ · Emoji: :smile: :thumbsup:</span>
         </div>

@@ -172,6 +172,9 @@ class ClientTCPConnection:
         - "Bem-vindo ao chat!" → Sinal de autenticação bem-sucedida
         - Mensagens normais → Repassar ao navegador
         - Erros → Desconectar
+        
+        Nota: múltiplas mensagens podem vir em um único recv().
+        Cada uma é separada por \n, então faz split() e processa cada.
         """
         first_message = True
         try:
@@ -187,11 +190,17 @@ class ClientTCPConnection:
                         )
                         break
 
-                    message = (
-                        data.decode('utf-8', errors='ignore').strip()
-                    )
-
-                    if message:
+                    # Decodifica e faz split por linha
+                    # Múltiplas mensagens podem vir em um recv()
+                    raw_text = data.decode('utf-8', errors='ignore')
+                    lines = raw_text.split('\n')
+                    
+                    for line in lines:
+                        message = line.strip()
+                        
+                        if not message:
+                            continue
+                        
                         logger.info(
                             f"[{self.sid}] Recebido do Engine: {message}"
                         )
@@ -219,7 +228,7 @@ class ClientTCPConnection:
                             or message.startswith('HEAD ')
                             or message.startswith('GET ')
                         ):
-                            logger.info(
+                            logger.debug(
                                 f"[{self.sid}] Ignorando probe HTTP: "
                                 f"{message.splitlines()[0]!r}"
                             )

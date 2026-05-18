@@ -159,13 +159,31 @@ function resetUI() {
     updateUI();
 }
 
+let emojiPicker;
+
+function initEmojiPicker() {
+    if (!window.EmojiButton) return;
+    emojiPicker = new EmojiButton({ position: 'top-start' });
+    emojiPicker.on('emoji', selection => {
+        const input = document.getElementById('messageInput');
+        input.value += selection.emoji;
+        input.focus();
+    });
+}
+
+function openEmojiPicker() {
+    if (!emojiPicker) return;
+    const button = document.getElementById('emojiPickerBtn');
+    emojiPicker.togglePicker(button);
+}
+
 function renderMessageText(rawMessage) {
-    let text = escapeHtml(rawMessage);
-    text = replaceEmojiShortcodes(text);
-    text = replaceMarkdown(text);
-    text = embedMedia(text);
-    text = linkify(text);
-    return text;
+    const escaped = escapeHtml(rawMessage);
+    const emojiText = replaceEmojiShortcodes(escaped);
+    const markdownText = replaceMarkdown(emojiText);
+    const mediaText = embedMedia(markdownText);
+    const linkedText = linkify(mediaText);
+    return linkedText;
 }
 
 function escapeHtml(text) {
@@ -199,33 +217,81 @@ function replaceEmojiShortcodes(text) {
 }
 
 function replaceMarkdown(text) {
-    // strong
+    if (window.marked) {
+        return marked.parseInline(text, { breaks: true, mangle: false, headerIds: false });
+    }
+    // Fallback caso marked não esteja disponível
     text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
-    // italic
     text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
     text = text.replace(/_(.+?)_/g, '<em>$1</em>');
-    // strike
     text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
-    // inline code
     text = text.replace(/`(.+?)`/g, '<code>$1</code>');
     return text;
 }
 
 function linkify(text) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null, false);
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+    const textNodes = [];
+
+    while (walker.nextNode()) {
+        textNodes.push(walker.currentNode);
+    }
+
+    textNodes.forEach(node => {
+        const originalText = node.textContent;
+        if (!originalText) return;
+
+        const fragments = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = urlRegex.exec(originalText)) !== null) {
+            const url = match[0];
+            const before = originalText.slice(lastIndex, match.index);
+            if (before) fragments.push(document.createTextNode(before));
+
+            const anchor = doc.createElement('a');
+            anchor.href = url;
+            anchor.target = '_blank';
+            anchor.rel = 'noreferrer';
+            anchor.textContent = url;
+            fragments.push(anchor);
+
+            lastIndex = match.index + url.length;
+        }
+
+        if (fragments.length > 0) {
+            const after = originalText.slice(lastIndex);
+            if (after) fragments.push(document.createTextNode(after));
+            fragments.forEach(fragment => node.parentNode.insertBefore(fragment, node);
+            node.parentNode.removeChild(node);
+        }
+    });
+
+    return doc.body.innerHTML;
 }
 
 function embedMedia(text) {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.replace(urlRegex, (url) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(text, 'text/html');
+    const anchors = Array.from(doc.querySelectorAll('a'));
+
+    anchors.forEach(a => {
+        const url = a.href || a.textContent;
         const lower = url.toLowerCase();
         if (lower.match(/\.(png|jpe?g|gif|webp)(\?|$)/)) {
-            return `<img src="${url}" alt="imagem" />`;
+            const img = doc.createElement('img');
+            img.src = url;
+            img.alt = 'imagem';
+            a.parentNode.replaceChild(img, a);
         }
-        return url;
     });
+
+    return doc.body.innerHTML;
 }
 
 function toggleGifPicker() {
@@ -253,14 +319,15 @@ async function searchGifs() {
 
         results.forEach(item => {
             const media = item.media && item.media[0];
-            const gifUrl = media && (media.gif || media.tinygif || media.mediumgif);
+            const gifData = media && (media.gif || media.tinygif || media.mediumgif || media.nanogif);
+            const gifUrl = gifData && gifData.url;
             if (!gifUrl) return;
 
             const thumb = document.createElement('div');
             thumb.className = 'gif-result';
-            thumb.innerHTML = `<img src="${gifUrl.url}" alt="GIF" />`;
+            thumb.innerHTML = `<img src="${gifUrl}" alt="GIF" />`;
             thumb.addEventListener('click', () => {
-                document.getElementById('messageInput').value = gifUrl.url;
+                document.getElementById('messageInput').value = gifUrl;
                 document.getElementById('messageInput').focus();
                 toggleGifPicker();
             });
@@ -279,6 +346,8 @@ async function searchGifs() {
  * Enter no input de mensagem = enviar
  */
 document.addEventListener('DOMContentLoaded', function() {
+    initEmojiPicker();
+
     const messageInput = document.getElementById('messageInput');
     const usernameInput = document.getElementById('usernameInput');
     
@@ -294,6 +363,15 @@ document.addEventListener('DOMContentLoaded', function() {
         usernameInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 connect();
+            }
+        });
+    }
+
+    const gifSearchInput = document.getElementById('gifSearchInput');
+    if (gifSearchInput) {
+        gifSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchGifs();
             }
         });
     }
