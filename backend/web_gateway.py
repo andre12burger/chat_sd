@@ -281,6 +281,45 @@ def serve_static(filename):
 
 
 # ============================================================================
+# ENDPOINT DEMO - Para testar failover
+# ============================================================================
+
+@app.route('/demo/kill-engine', methods=['POST'])
+def demo_kill_engine():
+    """
+    [DEMO ONLY] Simula falha do engine matando as conexões TCP.
+    
+    Isso permite testar o failover do backup server SEM matar todo o serviço.
+    Apenas o engine é "morto", o backup detecta e assume.
+    
+    Uso:
+    - Localmente: curl -X POST http://localhost:10000/demo/kill-engine
+    - Render: curl -X POST https://chat-distribuido-m46j.onrender.com/demo/kill-engine
+    """
+    logger.warning("=" * 60)
+    logger.warning("[DEMO] SIMULATING ENGINE FAILURE - Killing all TCP connections")
+    logger.warning("=" * 60)
+    
+    # Desconecta todos os clientes do engine
+    dead_count = 0
+    for sid, connection in list(clients_map.items()):
+        try:
+            logger.info(f"[DEMO] Closing TCP connection for {sid}")
+            connection.disconnect()
+            dead_count += 1
+        except Exception as e:
+            logger.error(f"[DEMO] Error closing {sid}: {e}")
+    
+    logger.warning(f"[DEMO] Killed {dead_count} connections. Backup should take over in ~2 seconds.")
+    logger.warning("=" * 60)
+    
+    return {
+        "status": "ok",
+        "message": f"Simulated engine failure. Killed {dead_count} TCP connections. Backup should assume control in ~2 seconds."
+    }, 200
+
+
+# ============================================================================
 # EVENTOS SOCKETIO
 # ============================================================================
 
