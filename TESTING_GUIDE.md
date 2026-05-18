@@ -174,6 +174,40 @@ Depois reconecte os usuários normalmente.
 
 ---
 
+### P4: "Por que os campos 'Último failover' e 'Motivo' aparecem sempre estáticos?"
+
+**Resposta:** Esses campos mostram o histórico de failover anterior. Eles devem aparecer assim:
+
+**Antes de qualquer failover (estado inicial):**
+- Último failover: `Nenhum`
+- Motivo: `Nenhum`
+
+**Após um failover bem-sucedido:**
+- Último failover: `2026-05-18T22:15:22.287Z` ← data/hora ISO do failover
+- Motivo: `Heartbeat do primário falhou` ← razão do failover
+
+**Eles são "estáticos" porque:**
+- São dados históricos, não mudam continuamente
+- Registram quando foi o ÚLTIMO failover
+- Permanecem até que aconteça um novo failover
+
+**Para resetar os dados de failover (útil antes de uma demonstração):**
+
+```bash
+# Windows (PowerShell):
+Invoke-WebRequest -Uri "https://chat-distribuido-m46j.onrender.com/demo/reset-failover-history" -Method POST
+
+# Linux/Mac (bash):
+curl -X POST https://chat-distribuido-m46j.onrender.com/demo/reset-failover-history
+```
+
+Depois disso:
+- Último failover volta para: `Nenhum` ✅
+- Motivo volta para: `Nenhum` ✅
+- Na próxima falha: Esses campos se atualizam com novos dados
+
+---
+
 ### 🏠 **Teste LOCALMENTE (Desenvolvimento) - Para Debug**
 
 Se preferir testar no seu PC antes:
