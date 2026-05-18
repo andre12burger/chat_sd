@@ -762,3 +762,22 @@ body {
         flex-direction: column;
     }
 }
+
+/* ================================
+   Hide Telemetry / Engineering UI
+   Useful for presentations where only the chat should be visible.
+   ================================ */
+.system-dashboard,
+.telemetry-sidebar {
+    display: none !important;
+}
+
+/* Use full width for chat when telemetry is hidden */
+.workspace {
+    grid-template-columns: 1fr !important;
+}
+
+/* Slightly increase chat area width for better visuals */
+.container {
+    max-width: 1200px;
+}
