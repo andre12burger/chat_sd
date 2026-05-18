@@ -23,6 +23,11 @@ HTTP_METHODS = {
 }
 """Métodos HTTP que não são usernames válidos (proteção contra probes)."""
 
+HTTP_HEADER_PREFIXES = (
+    'Host:', 'User-Agent:', 'Accept:', 'Connection:',
+    'Content-Type:', 'Content-Length:', 'Upgrade:', 'Origin:'
+)
+
 
 # ============================================================================
 # FUNÇÕES DE VALIDAÇÃO
@@ -74,8 +79,8 @@ def is_http_probe_message(message: str) -> bool:
     """
     Detecta se uma mensagem parece ser um probe HTTP.
 
-    Probes HTTP vêm de healthchecks e monitores.
-    Exemplo: "GET / HTTP/1.1"
+    Probes HTTP vêm de healthchecks, monitores ou balanceadores.
+    Exemplo: "GET / HTTP/1.1" ou headers como "Host:".
 
     Args:
         message: Mensagem a verificar.
@@ -86,6 +91,23 @@ def is_http_probe_message(message: str) -> bool:
     if not isinstance(message, str):
         return False
 
-    # Detecta padrões típicos de HTTP
-    http_indicators = ('HTTP/', 'GET ', 'HEAD ', 'POST ', 'PUT ', 'DELETE ')
-    return any(message.startswith(indicator) for indicator in http_indicators)
+    normalized = message.strip()
+    if not normalized:
+        return False
+
+    # Detecta start-line de HTTP + headers típicos
+    if any(normalized.upper().startswith(method + ' ') for method in HTTP_METHODS):
+        return True
+    if normalized.upper().startswith('HTTP/'):
+        return True
+
+    if any(normalized.startswith(prefix) for prefix in HTTP_HEADER_PREFIXES):
+        return True
+
+    # Multi-line requests podem chegar fragmentados; detecta headers separados por nova linha.
+    if '\n' in normalized or '\r' in normalized:
+        lines = re.split(r'[\r\n]+', normalized)
+        if len(lines) > 1 and any(line.startswith(prefix) for line in lines if line):
+            return True
+
+    return False

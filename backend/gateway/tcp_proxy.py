@@ -21,17 +21,36 @@ HTTP_PROBE_METHODS = (
     'OPTIONS ', 'TRACE ', 'CONNECT ', 'PATCH '
 )
 
+HTTP_HEADER_PREFIXES = (
+    'Host:', 'User-Agent:', 'Accept:', 'Connection:',
+    'Content-Type:', 'Content-Length:', 'Upgrade:', 'Origin:'
+)
+
 
 def is_http_probe_message(message: str) -> bool:
     """Detecta se a mensagem recebida parece um probe HTTP."""
     if not isinstance(message, str):
         return False
 
-    if 'HTTP/' in message:
+    normalized = message.strip()
+    if not normalized:
+        return False
+
+    if any(normalized.upper().startswith(method) for method in HTTP_PROBE_METHODS):
         return True
 
-    normalized = message.upper()
-    return any(normalized.startswith(method) for method in HTTP_PROBE_METHODS)
+    if normalized.upper().startswith('HTTP/'):
+        return True
+
+    if any(normalized.startswith(prefix) for prefix in HTTP_HEADER_PREFIXES):
+        return True
+
+    if '\n' in message or '\r' in message:
+        lines = [line for line in message.splitlines() if line]
+        if len(lines) > 1 and any(line.startswith(prefix) for line in lines):
+            return True
+
+    return False
 
 
 # ============================================================================
@@ -149,6 +168,21 @@ class ClientTCPConnection:
                         f"({self.reader_thread.name})"
                     )
 
+                    # Espera a confirmação de autenticação vinda do engine.
+                    if not self.auth_event.wait(timeout=5.0):
+                        logger.error(
+                            f"[{self.sid}] Não recebeu confirmação de autenticação do Engine."
+                        )
+                        self.disconnect()
+                        return False
+
+                    if not self.authenticated:
+                        logger.error(
+                            f"[{self.sid}] Autenticação do Engine falhou."
+                        )
+                        self.disconnect()
+                        return False
+
                     return True
 
                 except Exception as error:
@@ -237,6 +271,7 @@ class ClientTCPConnection:
                                 logger.error(
                                     f"[{self.sid}] Erro na autenticação: {message}"
                                 )
+                                self.auth_event.set()
                                 break
                         
                         # Ignora mensagens de probe HTTP

@@ -216,6 +216,15 @@ class ChatEngine:
                     username = None
                     return
 
+                # Ignora probes HTTP e headers que chegam em portas TCP por engano
+                if is_http_probe_message(username):
+                    logger.info(
+                        f"Probe HTTP detectado de {client_address}; "
+                        f"desconectando sem entrar no chat."
+                    )
+                    username = None
+                    return
+
                 # Valida o username
                 is_valid, error_msg = validate_username(username)
                 if not is_valid:
