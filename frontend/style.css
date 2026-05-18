@@ -9,8 +9,8 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #d4e7f7 0%, #b9d9f2 100%);
     height: 100vh;
     display: flex;
     align-items: center;
@@ -20,34 +20,92 @@ body {
 
 .container {
     width: 100%;
-    max-width: 600px;
-    height: 90vh;
-    max-height: 800px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 660px;
+    height: 92vh;
+    max-height: 840px;
+    background: linear-gradient(180deg, #f6fbff 0%, #e8f2fb 100%);
+    border: 1px solid #88b1d6;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    70% { transform: translate(2px, -1px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.nudge-shake {
+    animation: shake 0.45s ease-in-out 2;
+}
+
 /* Header */
 .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(180deg, #7ea7d9 0%, #5d8cc5 100%);
     color: white;
-    padding: 20px;
-    text-align: center;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 18px 20px 14px;
+    text-align: left;
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,0.18);
 }
 
 .header h1 {
-    font-size: 24px;
-    margin-bottom: 5px;
+    font-size: 22px;
+    margin-bottom: 4px;
 }
 
 .header p {
     font-size: 12px;
     opacity: 0.9;
+    margin-bottom: 10px;
+}
+
+.status-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    font-size: 12px;
+    color: #eef4ff;
+}
+
+.status-label {
+    opacity: 0.85;
+}
+
+.status-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.025em;
+    background: rgba(255,255,255,0.18);
+    color: white;
+}
+
+.status-dot.online { background: rgba(33, 173, 94, 0.85); }
+.status-dot.away { background: rgba(255, 167, 38, 0.85); }
+.status-dot.busy { background: rgba(220, 40, 55, 0.9); }
+.status-dot.offline { background: rgba(117, 125, 135, 0.8); }
+
+.status-note {
+    color: rgba(255,255,255,0.88);
+    opacity: 0.92;
+}
+
+.status-note code {
+    background: rgba(255,255,255,0.22);
+    padding: 2px 6px;
+    border-radius: 4px;
 }
 
 /* Login Section */
@@ -55,16 +113,18 @@ body {
     display: flex;
     gap: 10px;
     padding: 15px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #cbd9e8;
+    background: rgba(255,255,255,0.82);
 }
 
 .login-section input {
     flex: 1;
     padding: 10px 15px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
+    border: 1px solid #b3c6db;
+    border-radius: 8px;
     font-size: 14px;
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    background: #f7fbff;
 }
 
 .login-section input:focus {
@@ -96,30 +156,34 @@ body {
 .chat-area {
     flex: 1;
     overflow-y: auto;
-    padding: 15px;
-    background: #f9f9f9;
+    padding: 16px;
+    background: linear-gradient(180deg, #f4f8ff 0%, #e8f2fb 100%);
+    border-top: 1px solid #c6d5e8;
+    border-bottom: 1px solid #c6d5e8;
 }
 
 .message {
     margin-bottom: 12px;
-    padding: 10px 15px;
-    border-radius: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
     max-width: 80%;
     word-wrap: break-word;
     font-size: 14px;
-    line-height: 1.4;
+    line-height: 1.5;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .message.system {
-    background: #e0e0e0;
-    color: #666;
+    background: #edf5ff;
+    color: #4f6b8a;
     max-width: 100%;
     text-align: center;
     font-style: italic;
+    border: 1px solid #d3e2f5;
 }
 
 .message.own {
-    background: #667eea;
+    background: #0078d7;
     color: white;
     margin-left: auto;
     margin-right: 0;
@@ -127,14 +191,13 @@ body {
 
 .message.other {
     background: white;
-    color: #333;
-    border: 1px solid #ddd;
+    color: #1b2838;
+    border: 1px solid #d2dce7;
 }
 
 .message img {
     max-width: 100%;
-    border-radius: 8px;
-    margin-top: 8px;
+    border-radius: 10px;
 }
 
 .message code,

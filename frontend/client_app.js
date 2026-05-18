@@ -6,6 +6,72 @@
 const socket = io();
 let connected = false;
 let username = '';
+let userStatus = 'online';
+let statusMap = {};
+let audioContext;
+
+function ensureAudioContext() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playTone(frequency, duration = 0.1, type = 'sine') {
+    try {
+        ensureAudioContext();
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = type;
+        osc.frequency.value = frequency;
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+        osc.start();
+        osc.stop(audioContext.currentTime + duration);
+    } catch (error) {
+        console.warn('Audio não disponível:', error);
+    }
+}
+
+function playMessageSound() {
+    playTone(880, 0.06, 'triangle');
+    setTimeout(() => playTone(1320, 0.04, 'triangle'), 80);
+}
+
+function playNudgeSound() {
+    playTone(520, 0.1, 'square');
+    setTimeout(() => playTone(620, 0.1, 'square'), 120);
+}
+
+function setUserStatus(status) {
+    const statusElement = document.getElementById('userStatus');
+    if (!statusElement) return;
+    userStatus = status;
+    statusElement.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    statusElement.classList.remove('online', 'away', 'busy', 'offline');
+    statusElement.classList.add(status);
+}
+
+function handleStatusUpdate(sender, status) {
+    statusMap[sender] = status;
+
+    if (sender === username) {
+        setUserStatus(status);
+        displaySystemMessage(`Você agora está ${status}.`);
+    } else {
+        displaySystemMessage(`${sender} está agora ${status}.`);
+    }
+}
+
+function triggerNudge(sender) {
+    const chatWindow = document.querySelector('.container');
+    if (chatWindow) {
+        chatWindow.classList.add('nudge-shake');
+        setTimeout(() => chatWindow.classList.remove('nudge-shake'), 500);
+    }
+    playNudgeSound();
+    displaySystemMessage(`${sender} enviou um nudge!`);
+}
 
 // ============================================================================
 // EVENTOS SOCKETIO
@@ -31,7 +97,9 @@ socket.on('receive_message', function(data) {
 socket.on('connection_success', function(data) {
     connected = true;
     username = data.username;
+    setUserStatus('online');
     updateUI();
+    ensureAudioContext();
     displaySystemMessage(`Bem-vindo ao chat, ${username}!`);
 });
 
@@ -49,6 +117,8 @@ socket.on('connection_error', function(data) {
 socket.on('disconnect', function() {
     console.log('✗ Desconectado do servidor');
     connected = false;
+    userStatus = 'offline';
+    setUserStatus('offline');
     updateUI();
 });
 
@@ -84,8 +154,22 @@ function sendMessage() {
     const message = messageInput.value.trim();
     
     if (!message) return;
-    
-    // Emite evento para o servidor
+
+    if (message.startsWith('/status ')) {
+        const parts = message.split(' ');
+        if (parts.length === 2) {
+            const status = parts[1].toLowerCase();
+            if (['online', 'away', 'busy', 'offline'].includes(status)) {
+                socket.emit('send_message', { message: message });
+                messageInput.value = '';
+                messageInput.focus();
+                return;
+            }
+        }
+        displaySystemMessage('Use /status online, /status away, /status busy ou /status offline.');
+        return;
+    }
+
     socket.emit('send_message', { message: message });
     messageInput.value = '';
     messageInput.focus();
@@ -96,6 +180,22 @@ function sendMessage() {
  */
 function displayMessage(message) {
     const chatArea = document.getElementById('chatArea');
+
+    // Processa comandos especiais MSN-like
+    if (/^[^:]+:\s*\/nudge$/i.test(message)) {
+        const sender = message.split(':')[0];
+        triggerNudge(sender);
+        return;
+    }
+
+    const statusMatch = message.match(/^[^:]+:\s*\/status\s+(online|away|busy|offline)$/i);
+    if (statusMatch) {
+        const sender = message.split(':')[0];
+        const status = statusMatch[1].toLowerCase();
+        handleStatusUpdate(sender, status);
+        return;
+    }
+
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message';
     
@@ -111,6 +211,10 @@ function displayMessage(message) {
     messageDiv.innerHTML = renderMessageText(message);
     chatArea.appendChild(messageDiv);
     chatArea.scrollTop = chatArea.scrollHeight;
+
+    if (!message.startsWith(username + ':')) {
+        playMessageSound();
+    }
 }
 
 /**
@@ -123,6 +227,7 @@ function displaySystemMessage(message) {
     messageDiv.textContent = '[SYSTEM] ' + message;
     chatArea.appendChild(messageDiv);
     chatArea.scrollTop = chatArea.scrollHeight;
+    playTone(720, 0.04, 'triangle');
 }
 
 /**
@@ -137,7 +242,7 @@ function updateUI() {
         loginSection.style.display = 'none';
         inputSection.style.display = 'flex';
         document.getElementById('toolsSection').style.display = 'flex';
-        status.textContent = `Conectado como: ${username}`;
+        status.textContent = `Conectado como: ${username} • ${userStatus}`;
         document.getElementById('messageInput').focus();
     } else {
         loginSection.style.display = 'flex';
@@ -156,6 +261,8 @@ function resetUI() {
     document.getElementById('connectBtn').disabled = false;
     document.getElementById('usernameInput').disabled = false;
     document.getElementById('usernameInput').value = '';
+    userStatus = 'offline';
+    setUserStatus('offline');
     updateUI();
 }
 
