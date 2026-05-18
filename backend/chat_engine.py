@@ -14,6 +14,7 @@ Nada de WebSocket, HTTP ou abstrações. Apenas TCP e concorrência clássica.
 import socket
 import threading
 import logging
+import re
 from typing import Dict, Set
 from datetime import datetime
 
@@ -178,12 +179,25 @@ class ChatEngine:
                     logger.warning(f"Conexão de {client_address} fechada antes de fornecer username.")
                     return
                 
-                username = data.decode('utf-8').strip()
-                logger.info(f"Cliente de {client_address} identificou-se como: {username}")
+                username = data.decode('utf-8', errors='ignore').strip()
 
+                logger.info(f"Cliente de {client_address} identificou-se como: {username!r}")
+
+                # Ignora healthcheck explícito (usado pelo backup)
                 if username == HEALTHCHECK_USERNAME:
                     logger.info(f"Healthcheck recebido de {client_address}; encerrando conexao de monitoramento.")
                     username = None
+                    return
+
+                # Valida formato do username: apenas alfanumérico, underscore ou '-' e tamanho 1-20
+                if not re.match(r'^[A-Za-z0-9_\-]{1,20}$', username):
+                    logger.warning(
+                        f"Username invalido ou probe detectado de {client_address}: {username!r}; encerrando conexao." 
+                    )
+                    try:
+                        client_socket.send(b"Invalid username\n")
+                    except Exception:
+                        pass
                     return
             
             except socket.timeout:
