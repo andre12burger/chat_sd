@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Multiusuário - Sistemas Distribuídos</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Chat Multiusuário</h1>
+            <p>Sistemas Distribuídos - Prof. Bruno Dalmazo</p>
+        </div>
+        
+        <div class="login-section" id="loginSection">
+            <input type="text" id="usernameInput" placeholder="Digite seu username..." maxlength="20">
+            <button id="connectBtn" onclick="connect()">Conectar</button>
+        </div>
+        
+        <div class="chat-area" id="chatArea"></div>
+        
+        <div class="input-section" id="inputSection" style="display: none;">
+            <input type="text" id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off">
+            <button id="sendBtn" onclick="sendMessage()">Enviar</button>
+        </div>
+        
+        <div class="status" id="status">Desconectado</div>
+    </div>
+    
+    <script src="client_app.js"></script>
+</body>
+</html>
