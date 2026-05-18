@@ -22,6 +22,19 @@
         
         <div class="chat-area" id="chatArea"></div>
         
+        <div class="tools-section" id="toolsSection" style="display: none;">
+            <button id="gifToggleBtn" type="button" onclick="toggleGifPicker()">GIF</button>
+            <span class="hint">Markdown: **negrito**, *itálico*, ~~riscado~~ · Emoji: :smile: :thumbsup:</span>
+        </div>
+
+        <div class="gif-picker" id="gifPicker" style="display: none;">
+            <div class="gif-search">
+                <input type="text" id="gifSearchInput" placeholder="Buscar GIFs..." autocomplete="off">
+                <button type="button" onclick="searchGifs()">Buscar</button>
+            </div>
+            <div class="gif-results" id="gifResults"></div>
+        </div>
+        
         <div class="input-section" id="inputSection" style="display: none;">
             <input type="text" id="messageInput" placeholder="Digite sua mensagem..." autocomplete="off">
             <button id="sendBtn" onclick="sendMessage()">Enviar</button>

@@ -108,7 +108,7 @@ function displayMessage(message) {
         messageDiv.className = 'message other';
     }
     
-    messageDiv.textContent = message;
+    messageDiv.innerHTML = renderMessageText(message);
     chatArea.appendChild(messageDiv);
     chatArea.scrollTop = chatArea.scrollHeight;
 }
@@ -136,11 +136,14 @@ function updateUI() {
     if (connected) {
         loginSection.style.display = 'none';
         inputSection.style.display = 'flex';
+        document.getElementById('toolsSection').style.display = 'flex';
         status.textContent = `Conectado como: ${username}`;
         document.getElementById('messageInput').focus();
     } else {
         loginSection.style.display = 'flex';
         inputSection.style.display = 'none';
+        document.getElementById('toolsSection').style.display = 'none';
+        document.getElementById('gifPicker').style.display = 'none';
         status.textContent = 'Desconectado';
         document.getElementById('usernameInput').focus();
     }
@@ -154,6 +157,118 @@ function resetUI() {
     document.getElementById('usernameInput').disabled = false;
     document.getElementById('usernameInput').value = '';
     updateUI();
+}
+
+function renderMessageText(rawMessage) {
+    let text = escapeHtml(rawMessage);
+    text = replaceEmojiShortcodes(text);
+    text = replaceMarkdown(text);
+    text = embedMedia(text);
+    text = linkify(text);
+    return text;
+}
+
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+const emojiMap = {
+    smile: '😄',
+    thumbsup: '👍',
+    heart: '❤️',
+    clap: '👏',
+    wink: '😉',
+    laugh: '😂',
+    sad: '😢',
+    angry: '😠',
+    party: '🥳',
+    fire: '🔥',
+    star: '⭐',
+};
+
+function replaceEmojiShortcodes(text) {
+    return text.replace(/:([a-z0-9_+-]+):/gi, (match, name) => {
+        const key = name.toLowerCase();
+        return emojiMap[key] || match;
+    });
+}
+
+function replaceMarkdown(text) {
+    // strong
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    // italic
+    text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    text = text.replace(/_(.+?)_/g, '<em>$1</em>');
+    // strike
+    text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    // inline code
+    text = text.replace(/`(.+?)`/g, '<code>$1</code>');
+    return text;
+}
+
+function linkify(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, '<a href="$1" target="_blank" rel="noreferrer">$1</a>');
+}
+
+function embedMedia(text) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.replace(urlRegex, (url) => {
+        const lower = url.toLowerCase();
+        if (lower.match(/\.(png|jpe?g|gif|webp)(\?|$)/)) {
+            return `<img src="${url}" alt="imagem" />`;
+        }
+        return url;
+    });
+}
+
+function toggleGifPicker() {
+    const picker = document.getElementById('gifPicker');
+    const visible = picker.style.display === 'block';
+    picker.style.display = visible ? 'none' : 'block';
+    if (!visible) {
+        document.getElementById('gifSearchInput').focus();
+    }
+}
+
+async function searchGifs() {
+    const query = document.getElementById('gifSearchInput').value.trim();
+    if (!query) return;
+
+    const apiKey = 'LIVDSRZULELA';
+    const endpoint = `https://g.tenor.com/v1/search?q=${encodeURIComponent(query)}&key=${apiKey}&limit=12`;
+
+    try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        const results = data.results || [];
+        const container = document.getElementById('gifResults');
+        container.innerHTML = '';
+
+        results.forEach(item => {
+            const media = item.media && item.media[0];
+            const gifUrl = media && (media.gif || media.tinygif || media.mediumgif);
+            if (!gifUrl) return;
+
+            const thumb = document.createElement('div');
+            thumb.className = 'gif-result';
+            thumb.innerHTML = `<img src="${gifUrl.url}" alt="GIF" />`;
+            thumb.addEventListener('click', () => {
+                document.getElementById('messageInput').value = gifUrl.url;
+                document.getElementById('messageInput').focus();
+                toggleGifPicker();
+            });
+            container.appendChild(thumb);
+        });
+    } catch (error) {
+        console.error('Erro ao buscar GIFs:', error);
+    }
 }
 
 // ============================================================================

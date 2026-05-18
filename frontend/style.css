@@ -131,7 +131,113 @@ body {
     border: 1px solid #ddd;
 }
 
+.message img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.message code,
+.message pre {
+    background: rgba(0,0,0,0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.message strong {
+    font-weight: 700;
+}
+
+.message em {
+    font-style: italic;
+}
+
 /* Input Section */
+.tools-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    border-top: 1px solid #eee;
+    background: white;
+}
+
+.tools-section button {
+    padding: 8px 14px;
+    background: #5a67d8;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.tools-section button:hover {
+    background: #4c51bf;
+}
+
+.tools-section .hint {
+    font-size: 12px;
+    color: #666;
+}
+
+.gif-picker {
+    display: none;
+    padding: 10px 15px 0;
+    background: #f7fafc;
+    border-top: 1px solid #eee;
+}
+
+.gif-search {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.gif-search input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.gif-search button {
+    padding: 10px 14px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.gif-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 10px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.gif-result {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.gif-result img {
+    width: 100%;
+    display: block;
+}
+
+.gif-result:hover {
+    border-color: #667eea;
+}
+
 .input-section {
     display: flex;
     gap: 10px;
