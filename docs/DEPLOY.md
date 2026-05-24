@@ -2,7 +2,7 @@
 
 ## Estratégia: Projeto Online 24/7 (Gratuito)
 
-Este guia explica como colocar seu Chat Distribuído online de forma **gratuita, confiável e sempre ativo** até a data da avaliação do professor.
+Este guia explica como colocar seu Chat Distribuído online de forma **gratuita, confiável e sempre ativo**.
 
 ---
 

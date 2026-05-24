@@ -22,6 +22,7 @@ Para documentação completa e detalhada (arquitetura, árvore, comandos, testes
 - `docs/SETUP.md` (setup do ambiente)
 - `docs/DEPLOY.md` (deploy no Render)
 - `docs/TESTING_GUIDE.md` (roteiro de testes)
+- `docs/apresentacao/` (roteiro e perguntas prontas para a defesa)
 
 Quick start (local)
 
@@ -67,20 +68,6 @@ curl -X POST https://chat-distribuido-m46j.onrender.com/demo/reset-failover-hist
 ```
 
 Se quiser a documentação completa (arquitetura, árvore de arquivos, comandos, troubleshooting), abra `docs/PROJECT_DOCUMENTATION.md`.
-
----
-
-Desenvolvido para a disciplina Sistemas Distribuídos (Prof. Bruno Dalmazo).
-Este projeto foi desenvolvido para servir como base a um relatório técnico em LaTeX. As seções-chave para documentação:
-
-1. **Introdução**: Requisitos de Sistemas Distribuídos
-2. **Arquitetura**: Padrão Gateway + separação de responsabilidades
-3. **Implementação**: Threading.Thread e threading.Lock em profundidade
-4. **Testes**: Validação de concorrência
-5. **Conclusão**: Aprendizados sobre IPC e comunicação síncrona
-
-## Autores
-Desenvolvido como trabalho prático da disciplina **Sistemas Distribuídos** (Prof. Bruno Dalmazo).
 
 ---
 

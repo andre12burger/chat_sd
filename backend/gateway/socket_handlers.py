@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 # Esta estrutura mapeia cada sessão WebSocket (identificada por sid)
 # para sua conexão TCP correspondente com o chat_engine.
 clients_map = {}
-clients_meta = {}
 
 
 def _get_client_summary(sid: str) -> dict:
@@ -123,11 +122,6 @@ def on_join_chat(socketio, data):
 
         # Registra no mapa global
         register_client_connection(sid, tcp_connection)
-        clients_meta[sid] = {
-            'username': username,
-            'connected_at': tcp_connection.last_system_info.get('connected_at'),
-        }
-
         logger.info(f"[{sid}] Conectado com sucesso ao chat engine")
         system_state = _build_system_state()
         emit(
@@ -200,8 +194,6 @@ def on_disconnect():
     if tcp_connection:
         tcp_connection.disconnect()
         unregister_client_connection(sid)
-        clients_meta.pop(sid, None)
-
         from . import app_context
 
         socketio = app_context.get_socketio()

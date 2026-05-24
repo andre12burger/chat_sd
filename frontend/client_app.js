@@ -7,7 +7,6 @@ const socket = io();
 let connected = false;
 let username = '';
 let userStatus = 'online';
-let statusMap = {};
 let systemState = {
     serverRole: 'unknown',
     serverLabel: 'Indefinido',
@@ -182,8 +181,6 @@ function setUserStatus(status) {
 }
 
 function handleStatusUpdate(sender, status) {
-    statusMap[sender] = status;
-
     if (sender === username) {
         setUserStatus(status);
         updateSystemDashboard({ username: sender, user_status: status });
