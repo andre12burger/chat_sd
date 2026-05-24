@@ -11,6 +11,7 @@ Nenhuma abstração: apenas TCP e concorrência clássica.
 """
 
 import json
+import os
 import socket
 import threading
 import logging
@@ -131,7 +132,7 @@ class ChatEngine:
                 source="chat_engine",
                 engine_host=self.host,
                 engine_port=self.port,
-                # ✅ Preserva dados de failover anterior
+                    engine_pid=os.getpid(),
                 last_failover_reason=previous_status.get('last_failover_reason'),
                 last_failover_at=previous_status.get('last_failover_at'),
             )
@@ -440,7 +441,7 @@ class ChatEngine:
             source="chat_engine",
             engine_host=self.host,
             engine_port=self.port,
-            # ✅ Preserva dados de failover anterior
+                engine_pid=os.getpid(),
             last_failover_reason=previous_status.get('last_failover_reason'),
             last_failover_at=previous_status.get('last_failover_at'),
         )

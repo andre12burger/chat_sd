@@ -11,6 +11,7 @@ Responsabilidades:
 
 import logging
 import os
+import signal
 import threading
 import time
 from flask import Flask, send_from_directory
@@ -204,33 +205,58 @@ def demo_kill_engine():
     - Render: curl -X POST https://chat-distribuido-m46j.onrender.com/demo/kill-engine
     """
     logger.warning("=" * 60)
-    logger.warning(
-        "[DEMO] SIMULATING ENGINE FAILURE - Killing all TCP connections"
-    )
+    logger.warning("[DEMO] SIMULATING ENGINE FAILURE")
     logger.warning("=" * 60)
+
+    status = read_system_status()
+    engine_pid = status.get('engine_pid')
+    killed_engine_process = False
+
+    if isinstance(engine_pid, int) and engine_pid > 0:
+        if engine_pid == os.getpid():
+            logger.warning(
+                "[DEMO] engine_pid aponta para o gateway; ignorando kill de processo"
+            )
+        else:
+            try:
+                logger.warning(f"[DEMO] Killing engine process PID={engine_pid}")
+                os.kill(engine_pid, signal.SIGTERM)
+                killed_engine_process = True
+            except ProcessLookupError:
+                logger.warning("[DEMO] engine_pid não existe mais")
+            except Exception as error:
+                logger.error(f"[DEMO] Falha ao matar processo do engine: {error}")
+    else:
+        logger.warning("[DEMO] engine_pid indisponível no status compartilhado")
 
     # Desconecta todos os clientes do engine
     dead_count = 0
     for sid, connection in list(socket_handlers.clients_map.items()):
         try:
             logger.info(f"[DEMO] Closing TCP connection for {sid}")
-            connection.disconnect()
+            connection.disconnect(start_reconnect=True)
             dead_count += 1
         except Exception as error:
             logger.error(f"[DEMO] Error closing {sid}: {error}")
 
-    logger.warning(
-        f"[DEMO] Killed {dead_count} connections. "
-        f"Backup should take over in ~2 seconds."
-    )
+    if killed_engine_process:
+        logger.warning(
+            f"[DEMO] Killed engine process and {dead_count} TCP connections. "
+            f"Backup should take over in ~2 seconds."
+        )
+    else:
+        logger.warning(
+            f"[DEMO] Killed {dead_count} TCP connections, but engine process was not terminated."
+        )
     logger.warning("=" * 60)
 
     return {
         "status": "ok",
         "message": (
-            f"Simulated engine failure. Killed {dead_count} TCP "
-            f"connections. Backup should assume control in ~2 seconds."
+            f"Simulated engine failure. Killed {dead_count} TCP connections. "
+            f"Engine process terminated: {killed_engine_process}."
         ),
+        "engine_process_terminated": killed_engine_process,
     }, 200
 
 

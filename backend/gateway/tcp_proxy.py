@@ -111,6 +111,9 @@ class ClientTCPConnection:
         self.thread_name = None
         self.server_role = None
         self.last_system_info = {}
+        self.manual_disconnect = False
+        self._reconnect_thread = None
+        self._reconnect_lock = threading.Lock()
 
     # ========================================================================
     # MÉTODO: connect() - Abre Conexão TCP e Dispara Thread de Leitura
@@ -129,7 +132,11 @@ class ClientTCPConnection:
             True se conectado com sucesso, False caso contrário.
         """
         try:
+            if self.connected and self.tcp_socket:
+                return True
+
             last_error = None
+            self.manual_disconnect = False
             
             # Reseta flags de autenticação para nova tentativa
             self.authenticated = False
@@ -180,14 +187,14 @@ class ClientTCPConnection:
                         logger.error(
                             f"[{self.sid}] Não recebeu confirmação de autenticação do Engine."
                         )
-                        self.disconnect()
+                        self.disconnect(start_reconnect=False)
                         return False
 
                     if not self.authenticated:
                         logger.error(
                             f"[{self.sid}] Autenticação do Engine falhou."
                         )
-                        self.disconnect()
+                        self.disconnect(start_reconnect=False)
                         return False
 
                     return True
@@ -199,7 +206,7 @@ class ClientTCPConnection:
                         f"{self.connect_retries} falhou ao conectar "
                         f"ao chat_engine: {error}"
                     )
-                    self.disconnect()
+                    self.disconnect(start_reconnect=False)
 
                     if attempt < self.connect_retries:
                         time.sleep(self.connect_retry_delay)
@@ -215,8 +222,38 @@ class ClientTCPConnection:
             logger.error(
                 f"[{self.sid}] Erro ao conectar ao chat_engine: {error}"
             )
-            self.disconnect()
+            self.disconnect(start_reconnect=False)
             return False
+
+    def _start_reconnect_thread(self) -> None:
+        """Inicia um loop de reconexão em background (apenas uma vez)."""
+        if self.manual_disconnect:
+            return
+
+        with self._reconnect_lock:
+            if self._reconnect_thread and self._reconnect_thread.is_alive():
+                return
+
+            self._reconnect_thread = threading.Thread(
+                target=self._reconnect_loop,
+                daemon=True,
+                name=f"TCPReconnect-{self.sid}",
+            )
+            self._reconnect_thread.start()
+
+    def _reconnect_loop(self) -> None:
+        """Tenta reconectar periodicamente até sucesso ou disconnect manual."""
+        logger.warning(f"[{self.sid}] Iniciando loop de reconexão automática")
+
+        while not self.manual_disconnect:
+            if self.connected and self.authenticated:
+                return
+
+            if self.connect():
+                logger.info(f"[{self.sid}] Reconexão automática concluída")
+                return
+
+            time.sleep(self.connect_retry_delay)
 
     # ========================================================================
     # MÉTODO: _read_from_engine() - Thread Background
@@ -368,7 +405,8 @@ class ClientTCPConnection:
                     break
 
         finally:
-            self.disconnect()
+            should_reconnect = not self.manual_disconnect
+            self.disconnect(start_reconnect=should_reconnect)
 
     # ========================================================================
     # MÉTODO: send_to_engine() - Envia Mensagem para Chat Engine
@@ -404,7 +442,7 @@ class ClientTCPConnection:
                 logger.error(
                     f"[{self.sid}] Timeout aguardando autenticação"
                 )
-                self.disconnect()
+                self.disconnect(start_reconnect=False)
                 return False
 
         try:
@@ -417,7 +455,7 @@ class ClientTCPConnection:
             logger.error(
                 f"[{self.sid}] Erro ao enviar para Engine: {error}"
             )
-            self.disconnect()
+            self.disconnect(start_reconnect=False)
             if self.connect():
                 # ===== AGUARDA AUTENTICAÇÃO NOVAMENTE =====
                 if not self.authenticated:
@@ -425,7 +463,7 @@ class ClientTCPConnection:
                         logger.error(
                             f"[{self.sid}] Timeout na reconexão"
                         )
-                        self.disconnect()
+                        self.disconnect(start_reconnect=False)
                         return False
                 
                 try:
@@ -442,15 +480,15 @@ class ClientTCPConnection:
                         f"[{self.sid}] Falha ao reenviar "
                         f"após reconexão: {retry_error}"
                     )
-                    self.disconnect()
+                    self.disconnect(start_reconnect=False)
             return False
 
     # ========================================================================
     # MÉTODO: disconnect() - Fecha Conexão TCP
     # ========================================================================
 
-    def disconnect(self) -> None:
-        """Fecha a conexão TCP e libera recursos."""
+    def disconnect(self, start_reconnect: bool = False) -> None:
+        """Fecha a conexão TCP e, opcionalmente, agenda reconexão automática."""
         self.connected = False
         self.authenticated = False
         self.auth_event.clear()
@@ -460,5 +498,15 @@ class ClientTCPConnection:
                 self.tcp_socket.close()
             except Exception:
                 pass
+            finally:
+                self.tcp_socket = None
 
         logger.info(f"[{self.sid}] Desconectado do chat_engine")
+
+        if start_reconnect and not self.manual_disconnect:
+            self._start_reconnect_thread()
+
+    def close(self) -> None:
+        """Encerra a conexão de forma intencional (sem auto-reconexão)."""
+        self.manual_disconnect = True
+        self.disconnect(start_reconnect=False)

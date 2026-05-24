@@ -192,7 +192,7 @@ def on_disconnect():
     tcp_connection = get_client_connection(sid)
 
     if tcp_connection:
-        tcp_connection.disconnect()
+        tcp_connection.close()
         unregister_client_connection(sid)
         from . import app_context
 
